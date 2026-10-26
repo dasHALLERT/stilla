@@ -1,0 +1,15 @@
+{
+  "name": "stilla-server",
+  "version": "0.1.0",
+  "description": "stilla — verschlüsselter Messenger: Verzeichnis + Relay (Testserver)",
+  "private": true,
+  "type": "commonjs",
+  "main": "local-server.js",
+  "scripts": {
+    "start": "node local-server.js",
+    "test": "node test.js && node test-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
