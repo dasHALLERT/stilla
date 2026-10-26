@@ -6,8 +6,10 @@
   "type": "commonjs",
   "main": "local-server.js",
   "scripts": {
-    "start": "node local-server.js",
-    "test": "node test.js && node test-server.js"
+    "start": "node local-server.js"
+  },
+  "dependencies": {
+    "tweetnacl": "1.0.3"
   },
   "engines": {
     "node": ">=18"

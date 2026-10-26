@@ -15,6 +15,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const nacl = require("tweetnacl");   // geprüfte Krypto, läuft überall (auch iPhone)
 
 const directory = new Map();   // number -> { signPub, kexPub, name }
 const mailbox   = new Map();   // number -> [ {from, envelope, ts} ]
@@ -24,11 +25,14 @@ const nextNumber = () => { for(;;){ const n=String(crypto.randomInt(100000000,10
 function send(res,code,obj){ res.writeHead(code,{"Content-Type":"application/json"}); res.end(JSON.stringify(obj)); }
 function body(req){ return new Promise(r=>{let d="";req.on("data",c=>d+=c);req.on("end",()=>{try{r(JSON.parse(d||"{}"));}catch{r({});}});}); }
 
-// Login: WebCrypto-Signatur (Ed25519, SPKI) serverseitig prüfen
+// Login: Ed25519-Signatur per TweetNaCl prüfen (passt zum Client auf jedem Gerät)
 function verifyLogin(signPubB64, nonce, sigB64){
   try{
-    const pub = crypto.createPublicKey({ key:Buffer.from(signPubB64,"base64"), type:"spki", format:"der" });
-    return crypto.verify(null, Buffer.from(nonce), pub, Buffer.from(sigB64,"base64"));
+    return nacl.sign.detached.verify(
+      new Uint8Array(Buffer.from(nonce, "utf8")),
+      new Uint8Array(Buffer.from(sigB64, "base64")),
+      new Uint8Array(Buffer.from(signPubB64, "base64"))
+    );
   }catch{ return false; }
 }
 

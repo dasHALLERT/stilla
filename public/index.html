@@ -1,6 +1,7 @@
 <!doctype html><html lang="de"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>stilla (lokal)</title>
+<title>stilla</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js"></script>
 <style>
   :root{--bg:#10151e;--surface:#172030;--s2:#1e2a3a;--line:#2a3647;--fg:#e8eef3;--muted:#8798a8;--accent:#7cc3bb;--on:#07201d;--bad:#e68a8a;color-scheme:dark}
   *{box-sizing:border-box}html,body{height:100%;margin:0}
@@ -25,17 +26,18 @@
   .peerline b{font-size:.95rem}.peerline .n{color:var(--muted);font-family:ui-monospace,monospace;font-size:.7rem}
   .back{background:none;border:none;color:var(--fg);font-size:1.3rem;cursor:pointer;width:auto;padding:0 6px}
   .inbar{display:flex;gap:8px;padding:10px 0 16px}.inbar input{margin:0}.inbar button{width:auto;padding:11px 16px}
+  .err{color:var(--bad);font-size:.8rem;text-align:center;margin:8px 0;min-height:1em}
 </style></head><body>
 <div id="app">
 
-  <!-- Einstieg -->
   <section id="auth">
-    <h1>stilla <span style="font-size:.8rem;color:var(--muted)">· lokal</span></h1>
-    <p class="sub">Echte Ende-zu-Ende-Verschlüsselung im Browser. <span class="warn">Lokaler Test — nicht über das Internet abgesichert.</span></p>
+    <h1>stilla <span style="font-size:.8rem;color:var(--muted)">· test</span></h1>
+    <p class="sub">Echte Ende-zu-Ende-Verschlüsselung im Browser. <span class="warn">Test-Version — keine echten Geheimnisse.</span></p>
     <div class="card" id="newUser">
       <div class="e2e">🔒 Schlüssel entstehen auf diesem Gerät</div>
-      <input id="name" placeholder="Dein Name" maxlength="24">
+      <input id="name" placeholder="Dein Name" maxlength="24" autocomplete="off">
       <button id="createBtn">Profil erstellen</button>
+      <div class="err" id="authErr"></div>
     </div>
     <div class="card hide" id="haveUser">
       <p class="sub" style="margin:0 0 6px">Angemeldet als <b id="meName"></b></p>
@@ -45,7 +47,6 @@
     </div>
   </section>
 
-  <!-- Startseite -->
   <section id="home" class="hide">
     <h1>stilla</h1>
     <div class="card">
@@ -58,7 +59,6 @@
     </div>
   </section>
 
-  <!-- Chat -->
   <section id="chat" class="hide" style="flex:1;min-height:0;display:flex;flex-direction:column">
     <div class="peerline"><button class="back" id="backBtn">‹</button><div><b id="peerName">—</b><div class="n" id="peerNumLbl"></div></div></div>
     <div class="e2e">🔒 Ende-zu-Ende verschlüsselt</div>
@@ -69,68 +69,57 @@
 </div>
 <script>
 const $=s=>document.querySelector(s);
-const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const enc=new TextEncoder(), dec=new TextDecoder();
+const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const api=(p,m="POST",d)=>fetch(p,{method:m,headers:{"Content-Type":"application/json"},body:d?JSON.stringify(d):undefined}).then(r=>r.json());
 const fmt=n=>(""+n).replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
 let me=null, peer=null, poll=null, seen=new Set();
 
-/* ---------- Schlüssel ---------- */
-async function genKeys(){
-  const sign=await crypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]);
-  const kex =await crypto.subtle.generateKey({name:"X25519"},true,["deriveBits"]);
-  return {sign,kex};
+/* ---------- Identität (TweetNaCl — läuft auf jedem Browser) ---------- */
+function newIdentity(name){
+  const sign=nacl.sign.keyPair();     // Ed25519 — Login-Signatur
+  const box =nacl.box.keyPair();      // X25519  — Nachrichten-Verschlüsselung
+  return { name,
+    signPub:b64(sign.publicKey), signSec:b64(sign.secretKey),
+    kexPub :b64(box.publicKey),  kexSec :b64(box.secretKey) };
 }
-async function exportAll(k){
-  return {
-    signPub:b64(await crypto.subtle.exportKey("spki",k.sign.publicKey)),
-    signPriv:b64(await crypto.subtle.exportKey("pkcs8",k.sign.privateKey)),
-    kexPub:b64(await crypto.subtle.exportKey("spki",k.kex.publicKey)),
-    kexPriv:b64(await crypto.subtle.exportKey("pkcs8",k.kex.privateKey)),
-  };
-}
-async function importPriv(){
-  me.signPrivKey=await crypto.subtle.importKey("pkcs8",unb64(me.signPriv),{name:"Ed25519"},false,["sign"]);
-  me.kexPrivKey =await crypto.subtle.importKey("pkcs8",unb64(me.kexPriv),{name:"X25519"},false,["deriveBits"]);
-}
+function signNonce(nonce){ return b64(nacl.sign.detached(enc.encode(nonce), unb64(me.signSec))); }
 
-/* ---------- Krypto ---------- */
-async function deriveAes(myKexPriv,theirKexPubB64,salt){
-  const theirPub=await crypto.subtle.importKey("spki",unb64(theirKexPubB64),{name:"X25519"},false,[]);
-  const shared=await crypto.subtle.deriveBits({name:"X25519",public:theirPub},myKexPriv,256);
-  const hk=await crypto.subtle.importKey("raw",shared,"HKDF",false,["deriveBits"]);
-  const bits=await crypto.subtle.deriveBits({name:"HKDF",hash:"SHA-256",salt,info:new TextEncoder().encode("stilla-msg-v1")},hk,256);
-  return crypto.subtle.importKey("raw",bits,{name:"AES-GCM"},false,["encrypt","decrypt"]);
+/* ---------- Ende-zu-Ende ---------- */
+function encrypt(theirKexPubB64,text){
+  const nonce=nacl.randomBytes(24);
+  const box=nacl.box(enc.encode(text), nonce, unb64(theirKexPubB64), unb64(me.kexSec));
+  return { n:b64(nonce), c:b64(box) };
 }
-async function encrypt(theirKexPubB64,text){
-  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
-  const key=await deriveAes(me.kexPrivKey,theirKexPubB64,salt);
-  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(text));
-  return {salt:b64(salt),iv:b64(iv),ct:b64(ct)};
-}
-async function decrypt(theirKexPubB64,env){
-  const key=await deriveAes(me.kexPrivKey,theirKexPubB64,unb64(env.salt));
-  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:unb64(env.iv)},key,unb64(env.ct));
-  return new TextDecoder().decode(pt);
+function decrypt(theirKexPubB64,env){
+  const m=nacl.box.open(unb64(env.c), unb64(env.n), unb64(theirKexPubB64), unb64(me.kexSec));
+  return m? dec.decode(m) : "🔒 (konnte nicht entschlüsselt werden)";
 }
 
 /* ---------- Flow ---------- */
 async function createProfile(){
-  const name=($("#name").value||"").trim()||"anonym";
-  const k=await genKeys(); const ex=await exportAll(k);
-  const reg=await api("/register","POST",{signPub:ex.signPub,kexPub:ex.kexPub,name});
-  me={number:reg.number,name,...ex}; localStorage.setItem("stilla_local_me",JSON.stringify(me));
-  await importPriv(); gotoHome();
+  const err=$("#authErr"); err.textContent="";
+  try{
+    if(typeof nacl==="undefined") throw new Error("Krypto-Bibliothek nicht geladen — Seite neu laden.");
+    const name=($("#name").value||"").trim()||"anonym";
+    const id=newIdentity(name);
+    const reg=await api("/register","POST",{signPub:id.signPub,kexPub:id.kexPub,name});
+    if(!reg||!reg.number) throw new Error("Server antwortet nicht — kurz warten und erneut.");
+    me={number:reg.number,...id}; localStorage.setItem("stilla_me",JSON.stringify(me));
+    gotoHome();
+  }catch(e){ err.textContent=(e&&e.message)||"Es ist etwas schiefgegangen."; }
 }
 function showAuth(){
-  const saved=localStorage.getItem("stilla_local_me");
-  if(saved){ me=JSON.parse(saved); $("#newUser").classList.add("hide"); $("#haveUser").classList.remove("hide");
-    $("#meName").textContent=me.name; $("#meNum").textContent=fmt(me.number); }
+  const saved=localStorage.getItem("stilla_me");
+  if(saved){ try{me=JSON.parse(saved);}catch{me=null;}
+    if(me&&me.signSec){ $("#newUser").classList.add("hide"); $("#haveUser").classList.remove("hide");
+      $("#meName").textContent=me.name; $("#meNum").textContent=fmt(me.number); } }
 }
-async function gotoHome(){
-  if(!me.signPrivKey) await importPriv();
+function gotoHome(){
   $("#auth").classList.add("hide"); $("#chat").classList.add("hide");
   $("#home").classList.remove("hide"); $("#homeNum").textContent=fmt(me.number);
+  if(poll)clearInterval(poll); poll=setInterval(()=>{ if(me&&!peer) fetchLoop().catch(()=>{}); },3000);
 }
 async function openChat(num){
   num=(num||"").replace(/\D/g,""); if(num.length!==9){alert("Bitte 9-stellige Nummer.");return;}
@@ -141,12 +130,12 @@ async function openChat(num){
   $("#peerName").textContent=peer.name; $("#peerNumLbl").textContent=fmt(num);
   $("#home").classList.add("hide"); $("#chat").classList.remove("hide");
   $("#thread").innerHTML=""; seen=new Set();
-  startPolling();
+  if(poll)clearInterval(poll); fetchLoop(); poll=setInterval(fetchLoop,2000);
 }
 function bubble(text,out){const d=document.createElement("div");d.className="bub "+(out?"out":"in");d.textContent=text;$("#thread").appendChild(d);$("#thread").scrollTop=1e9;}
 async function sendMsg(){
   const t=$("#msg").value.trim(); if(!t||!peer) return; $("#msg").value="";
-  const env=await encrypt(peer.kexPub,t);
+  const env=encrypt(peer.kexPub,t);
   await api("/send","POST",{to:peer.number,from:me.number,envelope:env});
   bubble(t,true);
 }
@@ -154,26 +143,22 @@ async function fetchLoop(){
   const r=await api("/fetch","POST",{number:me.number});
   for(const m of (r.messages||[])){
     const id=m.ts+"_"+m.from; if(seen.has(id))continue; seen.add(id);
-    // Absender-Schlüssel holen (für die Entschlüsselung)
     let senderKex=peer&&peer.number===m.from?peer.kexPub:null;
     if(!senderKex){const k=await api("/keys?number="+m.from,"GET");senderKex=k.kexPub;}
-    try{const text=await decrypt(senderKex,m.envelope); if(peer&&peer.number===m.from) bubble(text,false);}catch(e){}
+    try{const text=decrypt(senderKex,m.envelope); if(peer&&peer.number===m.from) bubble(text,false);}catch(e){}
   }
 }
-function startPolling(){ if(poll)clearInterval(poll); fetchLoop(); poll=setInterval(fetchLoop,2000); }
 
 /* ---------- Events ---------- */
 $("#createBtn").onclick=createProfile;
 $("#continueBtn").onclick=gotoHome;
-$("#resetBtn").onclick=()=>{localStorage.removeItem("stilla_local_me");location.reload();};
+$("#resetBtn").onclick=()=>{localStorage.removeItem("stilla_me");location.reload();};
 $("#openBtn").onclick=()=>openChat($("#peerNum").value);
 $("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")openChat($("#peerNum").value);});
 $("#backBtn").onclick=()=>{$("#chat").classList.add("hide");$("#home").classList.remove("hide");peer=null;};
 $("#sendBtn").onclick=sendMsg;
 $("#msg").addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg();});
+$("#name").addEventListener("keydown",e=>{if(e.key==="Enter")createProfile();});
 
-if(!(crypto.subtle&&crypto.subtle.deriveBits)) alert("Dieser Browser unterstützt die nötige Verschlüsselung nicht. Bitte aktuellen Safari/Chrome nutzen.");
 showAuth();
-// Hintergrund-Abfrage, damit Nachrichten auch auf der Startseite ankommen
-setInterval(()=>{ if(me&&me.kexPrivKey&&!peer) fetchLoop().catch(()=>{}); },3000);
 </script></body></html>
