@@ -4,69 +4,129 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js"></script>
 <style>
   :root{--bg:#10151e;--surface:#172030;--s2:#1e2a3a;--line:#2a3647;--fg:#e8eef3;--muted:#8798a8;--accent:#7cc3bb;--on:#07201d;--bad:#e68a8a;color-scheme:dark}
+  :root[data-t="hell"]{--bg:#eef1f5;--surface:#ffffff;--s2:#f3f6f9;--line:#dce3ea;--fg:#16202b;--muted:#5f6d7c;color-scheme:light}
   *{box-sizing:border-box}html,body{height:100%;margin:0}
-  body{background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;line-height:1.5}
-  #app{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:0 14px}
-  h1{font-size:1.4rem;margin:16px 0 2px}.sub{color:var(--muted);font-size:.84rem;margin:0 0 14px}
-  .warn{color:var(--bad);font-size:.74rem}
-  input{width:100%;background:var(--s2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;color:var(--fg);font-size:.92rem;margin:6px 0}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,"Segoe UI",sans-serif;line-height:1.5}
+  #app{max-width:520px;margin:0 auto;height:100%;position:relative;display:flex;flex-direction:column}
+  .view{position:absolute;inset:0;display:none;flex-direction:column;padding:0 14px}
+  .view.on{display:flex}
+  input{width:100%;background:var(--s2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;color:var(--fg);font-size:.95rem}
+  input::placeholder{color:var(--muted)}
   button{background:var(--accent);color:var(--on);border:none;border-radius:11px;padding:12px;font-weight:600;font-size:.92rem;cursor:pointer;width:100%}
   button.ghost{background:none;border:1px solid var(--line);color:var(--fg)}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:10px}
-  .mynum{font-family:ui-monospace,monospace;font-size:1.4rem;letter-spacing:.12em;color:var(--accent);text-align:center}
-  .hide{display:none}
-  .thread{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:12px 0}
-  .bub{max-width:78%;padding:9px 12px;border-radius:15px;font-size:.9rem;word-wrap:break-word;white-space:pre-wrap}
+  .err{color:var(--bad);font-size:.82rem;text-align:center;margin:8px 0;min-height:1em}
+  .mynum{font-family:ui-monospace,monospace;font-size:1.6rem;letter-spacing:.14em;color:var(--accent);text-align:center}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:12px}
+  .sub{color:var(--muted);font-size:.86rem}
+
+  /* onboarding */
+  #auth{align-items:center;justify-content:center;gap:12px;text-align:center}
+  #auth .logo svg{width:66px;height:66px}
+  #auth h1{font-family:Georgia,serif;font-weight:600;font-size:2rem;margin:4px 0 0}
+  #auth .fld{max-width:300px}
+
+  /* header */
+  .hdr{flex:none;display:flex;align-items:center;gap:10px;padding:14px 0 12px;border-bottom:1px solid var(--line)}
+  .hdr .logo svg{width:28px;height:28px;display:block}
+  .hdr .t{font-family:Georgia,serif;font-weight:600;font-size:1.2rem}
+  .hdr .me{margin-left:auto;text-align:right}
+  .hdr .me .n{font-family:ui-monospace,monospace;font-size:.62rem;color:var(--muted);letter-spacing:.06em}
+  .hdr .me .nm{font-size:.82rem;font-weight:600}
+  .ic{background:none;border:none;color:var(--muted);cursor:pointer;padding:5px;width:auto}
+  .ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+  .scroll{flex:1;min-height:0;overflow-y:auto}
+  .empty{color:var(--muted);text-align:center;padding:40px 18px;font-size:.9rem}
+  .empty b{color:var(--fg)}
+  .row{display:flex;align-items:center;gap:12px;padding:12px 2px;cursor:pointer;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+  .av{width:42px;height:42px;border-radius:50%;flex:none;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 45%,#000));display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--on)}
+  .row .mid{flex:1;min-width:0}.row .nm{font-weight:600;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .pv{color:var(--muted);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .un{background:var(--accent);color:var(--on);font-family:ui-monospace,monospace;font-size:.62rem;font-weight:600;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 6px}
+
+  .fab{position:absolute;right:16px;bottom:calc(18px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border-radius:50%;background:var(--accent);color:var(--on);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px -6px color-mix(in srgb,var(--accent) 50%,transparent)}
+  .fab svg{width:24px;height:24px;stroke:var(--on);stroke-width:2.2;fill:none;stroke-linecap:round}
+
+  /* chat */
+  .cvhdr{flex:none;display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .back{background:none;border:none;color:var(--fg);cursor:pointer;font-size:1.4rem;width:auto;padding:0 4px}
+  .cvhdr .av{width:34px;height:34px}.cvhdr .nm{font-weight:600;font-size:.95rem}
+  .cvhdr .nu{font-family:ui-monospace,monospace;font-size:.6rem;color:var(--accent)}
+  .e2e{color:var(--accent);font-size:.66rem;font-family:ui-monospace,monospace;text-align:center;padding:6px 0}
+  .thread{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:8px 0}
+  .bub{max-width:78%;padding:9px 12px;border-radius:15px;font-size:.92rem;word-wrap:break-word;white-space:pre-wrap}
   .in{align-self:flex-start;background:var(--s2);border-bottom-left-radius:5px}
   .out{align-self:flex-end;background:var(--accent);color:var(--on);border-bottom-right-radius:5px}
-  .row{display:flex;gap:8px;align-items:center}
-  .row input{margin:0}.row button{width:auto;padding:12px 16px}
-  .e2e{color:var(--accent);font-size:.68rem;font-family:ui-monospace,monospace;text-align:center;margin:6px 0}
-  .peerline{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
-  .peerline b{font-size:.95rem}.peerline .n{color:var(--muted);font-family:ui-monospace,monospace;font-size:.7rem}
-  .back{background:none;border:none;color:var(--fg);font-size:1.3rem;cursor:pointer;width:auto;padding:0 6px}
-  .inbar{display:flex;gap:8px;padding:10px 0 16px}.inbar input{margin:0}.inbar button{width:auto;padding:11px 16px}
-  .err{color:var(--bad);font-size:.8rem;text-align:center;margin:8px 0;min-height:1em}
+  .inbar{flex:none;display:flex;gap:8px;padding:10px 0 calc(14px + env(safe-area-inset-bottom,0px))}
+  .inbar input{flex:1}.inbar .snd{width:46px;flex:none;display:flex;align-items:center;justify-content:center}
+  .inbar .snd svg{width:18px;height:18px;fill:var(--on)}
+
+  /* sheet */
+  .sheet{position:absolute;inset:0;z-index:20;background:rgba(5,8,12,.78);backdrop-filter:blur(3px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:26px;text-align:center}
+  .sheet.on{display:flex}
+  .sheet h3{font-family:Georgia,serif;font-weight:600;font-size:1.2rem;margin:0}
+  .sheet .x{position:absolute;top:16px;right:20px;background:none;border:none;color:var(--muted);font-size:1.4rem;width:auto;cursor:pointer}
+  .sheet .inner{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px}
+  .copybtn{font-family:ui-monospace,monospace}
+  .toast{position:absolute;left:50%;bottom:84px;transform:translate(-50%,10px);background:var(--s2);border:1px solid var(--line);color:var(--fg);padding:10px 16px;border-radius:11px;font-size:.84rem;opacity:0;pointer-events:none;transition:.2s;z-index:40;max-width:84%;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
 </style></head><body>
+<svg width="0" height="0" style="position:absolute"><symbol id="mark" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#g)" stroke="#2a3647" stroke-width="1.5"/><g fill="#7cc3bb"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></symbol></svg>
+
 <div id="app">
 
-  <section id="auth">
-    <h1>stilla <span style="font-size:.8rem;color:var(--muted)">· test</span></h1>
-    <p class="sub">Echte Ende-zu-Ende-Verschlüsselung im Browser. <span class="warn">Test-Version — keine echten Geheimnisse.</span></p>
-    <div class="card" id="newUser">
-      <div class="e2e">🔒 Schlüssel entstehen auf diesem Gerät</div>
-      <input id="name" placeholder="Dein Name" maxlength="24" autocomplete="off">
-      <button id="createBtn">Profil erstellen</button>
-      <div class="err" id="authErr"></div>
-    </div>
-    <div class="card hide" id="haveUser">
-      <p class="sub" style="margin:0 0 6px">Angemeldet als <b id="meName"></b></p>
-      <div class="mynum" id="meNum">—</div>
-      <button class="ghost" id="continueBtn" style="margin-top:10px">Weiter</button>
-      <button class="ghost" id="resetBtn" style="margin-top:8px">Profil zurücksetzen</button>
-    </div>
-  </section>
-
-  <section id="home" class="hide">
+  <!-- ONBOARDING -->
+  <div class="view on" id="auth">
+    <span class="logo"><svg><use href="#mark"/></svg></span>
     <h1>stilla</h1>
-    <div class="card">
-      <p class="sub" style="margin:0 0 4px">Deine Nummer — gib sie weiter:</p>
-      <div class="mynum" id="homeNum">—</div>
-    </div>
-    <div class="card">
-      <p class="sub" style="margin:0 0 4px">Chat starten mit Nummer:</p>
-      <div class="row"><input id="peerNum" inputmode="numeric" placeholder="9-stellige Nummer"><button id="openBtn">Los</button></div>
-    </div>
-  </section>
+    <p class="sub" style="max-width:30ch">Keine Handynummer. Du bekommst eine eigene 9-stellige Nummer. Schlüssel entstehen auf deinem Gerät.</p>
+    <input class="fld" id="name" placeholder="Dein Name" maxlength="24" autocomplete="off">
+    <button class="fld" id="createBtn" style="max-width:300px">Profil erstellen</button>
+    <div class="err" id="authErr"></div>
+    <p class="sub" style="font-size:.74rem;color:var(--bad)">Test-Version — keine echten Geheimnisse.</p>
+  </div>
 
-  <section id="chat" class="hide" style="flex:1;min-height:0;display:flex;flex-direction:column">
-    <div class="peerline"><button class="back" id="backBtn">‹</button><div><b id="peerName">—</b><div class="n" id="peerNumLbl"></div></div></div>
+  <!-- HOME -->
+  <div class="view" id="home">
+    <div class="hdr">
+      <span class="logo"><svg><use href="#mark"/></svg></span>
+      <span class="t">stilla</span>
+      <span class="me"><div class="n" id="homeNum"></div><div class="nm" id="homeName"></div></span>
+      <button class="ic" id="themeBtn" aria-label="Thema"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></button>
+    </div>
+    <div class="scroll" id="contacts"></div>
+    <button class="fab" id="fab" aria-label="hinzufügen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  </div>
+
+  <!-- CHAT -->
+  <div class="view" id="chat">
+    <div class="cvhdr">
+      <button class="back" id="backBtn">‹</button>
+      <div class="av" id="cvav">?</div>
+      <div style="flex:1;min-width:0"><div class="nm" id="peerName">—</div><div class="nu" id="peerNumLbl"></div></div>
+    </div>
     <div class="e2e">🔒 Ende-zu-Ende verschlüsselt</div>
     <div class="thread" id="thread"></div>
-    <div class="inbar"><input id="msg" placeholder="Nachricht…" autocomplete="off"><button id="sendBtn">➤</button></div>
-  </section>
+    <div class="inbar"><input id="msg" placeholder="Nachricht…" autocomplete="off"><button class="snd" id="sendBtn"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4v6l12 2-12 2z"/></svg></button></div>
+  </div>
 
+  <!-- ADD SHEET -->
+  <div class="sheet" id="addsheet">
+    <button class="x" data-close>✕</button>
+    <div class="inner">
+      <h3>Deine Nummer</h3>
+      <p class="sub" style="margin:0">Gib sie weiter, damit dich jemand findet:</p>
+      <div class="mynum" id="sheetNum">—</div>
+      <button class="ghost copybtn" id="copyNum">Nummer kopieren</button>
+      <p class="sub" style="margin:8px 0 0">…oder jemanden hinzufügen:</p>
+      <input id="peerNum" inputmode="numeric" placeholder="9-stellige Nummer">
+      <button id="addBtn">Chat starten</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
 </div>
+
 <script>
 const $=s=>document.querySelector(s);
 const enc=new TextEncoder(), dec=new TextDecoder();
@@ -74,91 +134,142 @@ const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const api=(p,m="POST",d)=>fetch(p,{method:m,headers:{"Content-Type":"application/json"},body:d?JSON.stringify(d):undefined}).then(r=>r.json());
 const fmt=n=>(""+n).replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
-let me=null, peer=null, poll=null, seen=new Set();
+const esc=s=>{const d=document.createElement("div");d.textContent=(s==null?"":s);return d.innerHTML;};
+const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v;}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+let me=null, peer=null, poll=null;
 
-/* ---------- Identität (TweetNaCl — läuft auf jedem Browser) ---------- */
+/* data stores (local, persistent) */
+const contacts=()=>LS.get("stilla_contacts",{});                 // number -> {name,kexPub}
+const saveContacts=c=>LS.set("stilla_contacts",c);
+const logOf=n=>LS.get("stilla_log_"+n,[]);                       // array of {from,text,ts}
+const saveLog=(n,a)=>LS.set("stilla_log_"+n,a);
+const unread=()=>LS.get("stilla_unread",{});
+const saveUnread=u=>LS.set("stilla_unread",u);
+
+let tT; function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),2600);}
+function show(v){document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id===v));}
+function avTxt(name){return (name||"?")[0].toUpperCase();}
+
+/* ---------- Identität (TweetNaCl — jedes Gerät) ---------- */
 function newIdentity(name){
-  const sign=nacl.sign.keyPair();     // Ed25519 — Login-Signatur
-  const box =nacl.box.keyPair();      // X25519  — Nachrichten-Verschlüsselung
-  return { name,
-    signPub:b64(sign.publicKey), signSec:b64(sign.secretKey),
-    kexPub :b64(box.publicKey),  kexSec :b64(box.secretKey) };
+  const s=nacl.sign.keyPair(), b=nacl.box.keyPair();
+  return {name, signPub:b64(s.publicKey),signSec:b64(s.secretKey), kexPub:b64(b.publicKey),kexSec:b64(b.secretKey)};
 }
-function signNonce(nonce){ return b64(nacl.sign.detached(enc.encode(nonce), unb64(me.signSec))); }
-
-/* ---------- Ende-zu-Ende ---------- */
-function encrypt(theirKexPubB64,text){
-  const nonce=nacl.randomBytes(24);
-  const box=nacl.box(enc.encode(text), nonce, unb64(theirKexPubB64), unb64(me.kexSec));
-  return { n:b64(nonce), c:b64(box) };
-}
-function decrypt(theirKexPubB64,env){
-  const m=nacl.box.open(unb64(env.c), unb64(env.n), unb64(theirKexPubB64), unb64(me.kexSec));
-  return m? dec.decode(m) : "🔒 (konnte nicht entschlüsselt werden)";
-}
+function encrypt(theirKexPubB64,text){const n=nacl.randomBytes(24);const box=nacl.box(enc.encode(text),n,unb64(theirKexPubB64),unb64(me.kexSec));return {n:b64(n),c:b64(box)};}
+function decrypt(theirKexPubB64,env){const m=nacl.box.open(unb64(env.c),unb64(env.n),unb64(theirKexPubB64),unb64(me.kexSec));return m?dec.decode(m):null;}
 
 /* ---------- Flow ---------- */
 async function createProfile(){
-  const err=$("#authErr"); err.textContent="";
+  const err=$("#authErr");err.textContent="";
   try{
-    if(typeof nacl==="undefined") throw new Error("Krypto-Bibliothek nicht geladen — Seite neu laden.");
+    if(typeof nacl==="undefined") throw new Error("Krypto-Bibliothek lädt noch — Seite neu laden.");
     const name=($("#name").value||"").trim()||"anonym";
     const id=newIdentity(name);
     const reg=await api("/register","POST",{signPub:id.signPub,kexPub:id.kexPub,name});
-    if(!reg||!reg.number) throw new Error("Server antwortet nicht — kurz warten und erneut.");
-    me={number:reg.number,...id}; localStorage.setItem("stilla_me",JSON.stringify(me));
-    gotoHome();
-  }catch(e){ err.textContent=(e&&e.message)||"Es ist etwas schiefgegangen."; }
+    if(!reg||!reg.number) throw new Error("Server antwortet gerade nicht — kurz warten, erneut.");
+    me={number:reg.number,...id}; LS.set("stilla_me",me);
+    startApp();
+  }catch(e){err.textContent=(e&&e.message)||"Es ist etwas schiefgegangen.";}
 }
-function showAuth(){
-  const saved=localStorage.getItem("stilla_me");
-  if(saved){ try{me=JSON.parse(saved);}catch{me=null;}
-    if(me&&me.signSec){ $("#newUser").classList.add("hide"); $("#haveUser").classList.remove("hide");
-      $("#meName").textContent=me.name; $("#meNum").textContent=fmt(me.number); } }
+async function ensureRegistered(){
+  // nach Server-Neustart kann unsere Nummer weg sein -> neu anmelden, Nummer behalten wenn möglich
+  try{const k=await api("/keys?number="+me.number,"GET"); if(k&&!k.error) return;}catch{}
+  try{const reg=await api("/register","POST",{signPub:me.signPub,kexPub:me.kexPub,name:me.name});
+    if(reg&&reg.number){ me.number=reg.number; LS.set("stilla_me",me); }}catch{}
 }
-function gotoHome(){
-  $("#auth").classList.add("hide"); $("#chat").classList.add("hide");
-  $("#home").classList.remove("hide"); $("#homeNum").textContent=fmt(me.number);
-  if(poll)clearInterval(poll); poll=setInterval(()=>{ if(me&&!peer) fetchLoop().catch(()=>{}); },3000);
+
+async function resolvePeer(num){
+  try{const k=await api("/keys?number="+num,"GET"); if(k&&!k.error){const c=contacts();c[num]={name:k.name||("Nummer "+fmt(num)),kexPub:k.kexPub};saveContacts(c);return c[num];}}catch{}
+  return contacts()[num]||null;
 }
+
+function renderContacts(){
+  const box=$("#contacts");const c=contacts();const u=unread();const nums=Object.keys(c);
+  if(!nums.length){box.innerHTML='<div class="empty">Noch keine Chats.<br>Tipp auf <b>+</b>, gib deine Nummer weiter oder füge eine hinzu.</div>';return;}
+  // sort by last message time
+  nums.sort((a,b)=>{const la=logOf(a),lb=logOf(b);return ((lb[lb.length-1]||{}).ts||0)-((la[la.length-1]||{}).ts||0);});
+  box.innerHTML="";
+  nums.forEach(n=>{const p=c[n]||{};const lg=logOf(n);const last=lg[lg.length-1];const uc=u[n]||0;
+    const r=document.createElement("div");r.className="row";
+    r.innerHTML=`<div class="av">${esc(avTxt(p.name))}</div><div class="mid"><div class="nm">${esc(p.name||("Nummer "+fmt(n)))}</div><div class="pv">${last?esc((last.from===me.number?"Du: ":"")+last.text):fmt(n)}</div></div>${uc?`<span class="un">${uc>99?"99+":uc}</span>`:""}`;
+    r.onclick=()=>openChat(n);box.appendChild(r);
+  });
+}
+
+function renderThread(n){
+  const box=$("#thread");box.innerHTML="";
+  logOf(n).slice().sort((a,b)=>a.ts-b.ts).forEach(m=>{const d=document.createElement("div");d.className="bub "+(m.from===me.number?"out":"in");d.textContent=m.text;box.appendChild(d);});
+  box.scrollTop=1e9;
+}
+
 async function openChat(num){
-  num=(num||"").replace(/\D/g,""); if(num.length!==9){alert("Bitte 9-stellige Nummer.");return;}
-  if(num===me.number){alert("Das ist deine eigene Nummer.");return;}
-  const keys=await api("/keys?number="+num,"GET");
-  if(keys.error){alert("Diese Nummer ist hier nicht registriert.");return;}
-  peer={number:num,name:keys.name||("Nummer "+fmt(num)),kexPub:keys.kexPub};
-  $("#peerName").textContent=peer.name; $("#peerNumLbl").textContent=fmt(num);
-  $("#home").classList.add("hide"); $("#chat").classList.remove("hide");
-  $("#thread").innerHTML=""; seen=new Set();
-  if(poll)clearInterval(poll); fetchLoop(); poll=setInterval(fetchLoop,2000);
+  const p=await resolvePeer(num)||{name:"Nummer "+fmt(num)};
+  if(!p.kexPub){toast("Diese Nummer ist (noch) nicht erreichbar.");return;}
+  peer={number:num,...p};
+  $("#peerName").textContent=p.name||("Nummer "+fmt(num));$("#peerNumLbl").textContent=fmt(num);$("#cvav").textContent=avTxt(p.name);
+  const u=unread();delete u[num];saveUnread(u);
+  renderThread(num);show("chat");
 }
-function bubble(text,out){const d=document.createElement("div");d.className="bub "+(out?"out":"in");d.textContent=text;$("#thread").appendChild(d);$("#thread").scrollTop=1e9;}
+
+async function addByNumber(){
+  const num=($("#peerNum").value||"").replace(/\D/g,"");
+  if(num.length!==9){toast("Bitte eine 9-stellige Nummer.");return;}
+  if(num===me.number){toast("Das ist deine eigene Nummer. 🙂");return;}
+  const p=await resolvePeer(num);
+  if(!p||!p.kexPub){toast("Diese Nummer ist hier nicht registriert.");return;}
+  $("#peerNum").value="";closeSheets();renderContacts();openChat(num);
+}
+
+function closeSheets(){document.querySelectorAll(".sheet").forEach(s=>s.classList.remove("on"));}
+
 async function sendMsg(){
-  const t=$("#msg").value.trim(); if(!t||!peer) return; $("#msg").value="";
-  const env=encrypt(peer.kexPub,t);
-  await api("/send","POST",{to:peer.number,from:me.number,envelope:env});
-  bubble(t,true);
+  const t=$("#msg").value.trim();if(!t||!peer)return;$("#msg").value="";
+  const lg=logOf(peer.number);lg.push({from:me.number,text:t,ts:Date.now()});saveLog(peer.number,lg);renderThread(peer.number);
+  try{const env=encrypt(peer.kexPub,t);await api("/send","POST",{to:peer.number,from:me.number,envelope:env});}
+  catch(e){toast("Konnte nicht senden.");}
 }
+
 async function fetchLoop(){
-  const r=await api("/fetch","POST",{number:me.number});
-  for(const m of (r.messages||[])){
-    const id=m.ts+"_"+m.from; if(seen.has(id))continue; seen.add(id);
-    let senderKex=peer&&peer.number===m.from?peer.kexPub:null;
-    if(!senderKex){const k=await api("/keys?number="+m.from,"GET");senderKex=k.kexPub;}
-    try{const text=decrypt(senderKex,m.envelope); if(peer&&peer.number===m.from) bubble(text,false);}catch(e){}
+  if(!me)return;
+  let r; try{r=await api("/fetch","POST",{number:me.number});}catch{return;}
+  const msgs=(r&&r.messages)||[];if(!msgs.length)return;
+  const u=unread();let changed=false,openPeerTouched=false;
+  for(const m of msgs){
+    const from=m.from;if(!from)continue;
+    const p=await resolvePeer(from); if(!p||!p.kexPub) continue;
+    const text=decrypt(p.kexPub,m.envelope); if(text==null) continue;
+    const lg=logOf(from);
+    if(lg.some(x=>x.ts===m.ts&&x.from===from)) continue; // Dublette
+    lg.push({from,text,ts:m.ts||Date.now()});saveLog(from,lg);changed=true;
+    if(peer&&peer.number===from){openPeerTouched=true;}
+    else{u[from]=(u[from]||0)+1;}
   }
+  if(changed){saveUnread(u); if($("#home").classList.contains("on"))renderContacts(); if(openPeerTouched&&peer)renderThread(peer.number);}
+}
+
+function startApp(){
+  $("#homeNum").textContent=fmt(me.number);$("#homeName").textContent=me.name;$("#sheetNum").textContent=fmt(me.number);
+  renderContacts();show("home");
+  ensureRegistered();
+  if(poll)clearInterval(poll);
+  fetchLoop(); poll=setInterval(fetchLoop,2500);
 }
 
 /* ---------- Events ---------- */
 $("#createBtn").onclick=createProfile;
-$("#continueBtn").onclick=gotoHome;
-$("#resetBtn").onclick=()=>{localStorage.removeItem("stilla_me");location.reload();};
-$("#openBtn").onclick=()=>openChat($("#peerNum").value);
-$("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")openChat($("#peerNum").value);});
-$("#backBtn").onclick=()=>{$("#chat").classList.add("hide");$("#home").classList.remove("hide");peer=null;};
+$("#name").addEventListener("keydown",e=>{if(e.key==="Enter")createProfile();});
+$("#fab").onclick=()=>{$("#sheetNum").textContent=fmt(me.number);$("#addsheet").classList.add("on");};
+$("#addBtn").onclick=addByNumber;
+$("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")addByNumber();});
+$("#backBtn").onclick=()=>{peer=null;renderContacts();show("home");};
 $("#sendBtn").onclick=sendMsg;
 $("#msg").addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg();});
-$("#name").addEventListener("keydown",e=>{if(e.key==="Enter")createProfile();});
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheets);
+$("#copyNum").onclick=async()=>{try{await navigator.clipboard.writeText(me.number);toast("Nummer kopiert ✓");}catch{toast("Deine Nummer: "+fmt(me.number));}};
+$("#themeBtn").onclick=()=>{const cur=document.documentElement.getAttribute("data-t")==="hell"?"dunkel":"hell";if(cur==="hell")document.documentElement.setAttribute("data-t","hell");else document.documentElement.removeAttribute("data-t");LS.set("stilla_theme",cur);};
 
-showAuth();
+/* boot */
+if(LS.get("stilla_theme","dunkel")==="hell")document.documentElement.setAttribute("data-t","hell");
+me=LS.get("stilla_me",null);
+if(me&&me.signSec){startApp();}else{show("auth");}
 </script></body></html>
