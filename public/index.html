@@ -39,7 +39,9 @@
   .empty{color:var(--muted);text-align:center;padding:40px 18px;font-size:.9rem}
   .empty b{color:var(--fg)}
   .row{display:flex;align-items:center;gap:12px;padding:12px 2px;cursor:pointer;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
-  .av{width:42px;height:42px;border-radius:50%;flex:none;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 45%,#000));display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--on)}
+  .av{width:42px;height:42px;border-radius:50%;flex:none;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 45%,#000));display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--on);overflow:hidden}
+  .av img{width:100%;height:100%;object-fit:cover;display:block}
+  .hav{width:34px;height:34px;font-size:.9rem;cursor:pointer}
   .row .mid{flex:1;min-width:0}.row .nm{font-weight:600;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .row .pv{color:var(--muted);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .row .un{background:var(--accent);color:var(--on);font-family:ui-monospace,monospace;font-size:.62rem;font-weight:600;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 6px}
@@ -58,8 +60,21 @@
   .in{align-self:flex-start;background:var(--s2);border-bottom-left-radius:5px}
   .out{align-self:flex-end;background:var(--accent);color:var(--on);border-bottom-right-radius:5px}
   .inbar{flex:none;display:flex;gap:8px;padding:10px 0 calc(14px + env(safe-area-inset-bottom,0px))}
+  .inbar{align-items:center}
   .inbar input{flex:1}.inbar .snd{width:46px;flex:none;display:flex;align-items:center;justify-content:center}
   .inbar .snd svg{width:18px;height:18px;fill:var(--on)}
+  .inbar .clip{flex:none;color:var(--muted);transform:rotate(0deg)}
+  .inbar .clip svg{width:22px;height:22px}
+  .bub img.bubimg{max-width:100%;border-radius:11px;display:block;cursor:pointer}
+  .bub .cap{margin-top:6px}
+  .filechip{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;min-width:180px}
+  .filechip .fi{font-size:1.5rem;flex:none}
+  .filechip .fm{min-width:0}
+  .filechip .fn{font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+  .filechip .fs{font-size:.74rem;opacity:.8}
+  .lightbox{position:absolute;inset:0;z-index:60;background:rgba(3,6,10,.92);display:none;align-items:center;justify-content:center;padding:20px}
+  .lightbox.on{display:flex}.lightbox img{max-width:100%;max-height:100%;border-radius:10px}
+  .lightbox .x{position:absolute;top:16px;right:20px;background:none;border:none;color:#fff;font-size:1.6rem;width:auto;cursor:pointer}
 
   /* sheet */
   .sheet{position:absolute;inset:0;z-index:20;background:rgba(5,8,12,.78);backdrop-filter:blur(3px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:26px;text-align:center}
@@ -70,6 +85,21 @@
   .copybtn{font-family:ui-monospace,monospace}
   .toast{position:absolute;left:50%;bottom:84px;transform:translate(-50%,10px);background:var(--s2);border:1px solid var(--line);color:var(--fg);padding:10px 16px;border-radius:11px;font-size:.84rem;opacity:0;pointer-events:none;transition:.2s;z-index:40;max-width:84%;text-align:center}
   .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* settings */
+  #settings .scroll{padding-bottom:30px}
+  .bigav{width:104px;height:104px;border-radius:50%;margin:18px auto 4px;font-size:2.2rem;position:relative;overflow:visible}
+  .bigav .inner{width:100%;height:100%;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--accent),color-mix(in srgb,var(--accent) 45%,#000));display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--on)}
+  .bigav .inner img{width:100%;height:100%;object-fit:cover;display:block}
+  .bigav .edit{position:absolute;right:2px;bottom:2px;width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--on);display:flex;align-items:center;justify-content:center;border:3px solid var(--bg);cursor:pointer;padding:0}
+  .bigav .edit svg{width:15px;height:15px;stroke:var(--on);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .setlbl{font-size:.78rem;color:var(--muted);margin:16px 2px 6px;letter-spacing:.02em}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+  .chip{background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:.8rem;color:var(--fg);cursor:pointer;width:auto}
+  .chip:hover{border-color:var(--accent)}
+  .themepick{display:flex;gap:10px}
+  .themepick .opt{flex:1;border:1px solid var(--line);border-radius:11px;padding:12px;text-align:center;cursor:pointer;font-size:.84rem;background:var(--s2)}
+  .themepick .opt.sel{border-color:var(--accent);color:var(--accent);font-weight:600}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><symbol id="mark" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#g)" stroke="#2a3647" stroke-width="1.5"/><g fill="#7cc3bb"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></symbol></svg>
 
@@ -91,8 +121,10 @@
     <div class="hdr">
       <span class="logo"><svg><use href="#mark"/></svg></span>
       <span class="t">stilla</span>
-      <span class="me"><div class="n" id="homeNum"></div><div class="nm" id="homeName"></div></span>
-      <button class="ic" id="themeBtn" aria-label="Thema"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></button>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div class="av hav" id="homeAv" role="button" title="Einstellungen">?</div>
+        <button class="ic" id="settingsBtn" aria-label="Einstellungen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 00-1.7-1l-.3-2.5H9.4l-.3 2.5a7 7 0 00-1.7 1l-2.3-1-2 3.4 2 1.5a7 7 0 000 2l-2 1.5 2 3.4 2.3-1a7 7 0 001.7 1l.3 2.5h4.2l.3-2.5a7 7 0 001.7-1l2.3 1 2-3.4-2-1.5a7 7 0 00.1-1z"/></svg></button>
+      </div>
     </div>
     <div class="scroll" id="contacts"></div>
     <button class="fab" id="fab" aria-label="hinzufügen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -107,7 +139,46 @@
     </div>
     <div class="e2e">🔒 Ende-zu-Ende verschlüsselt</div>
     <div class="thread" id="thread"></div>
-    <div class="inbar"><input id="msg" placeholder="Nachricht…" autocomplete="off"><button class="snd" id="sendBtn"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4v6l12 2-12 2z"/></svg></button></div>
+    <div class="inbar">
+      <button class="ic clip" id="clipBtn" aria-label="Datei"><svg viewBox="0 0 24 24"><path d="M21 11.5l-8.5 8.5a5 5 0 01-7-7l8.5-8.5a3.3 3.3 0 014.7 4.7l-8.5 8.5a1.6 1.6 0 01-2.3-2.3l7.8-7.8"/></svg></button>
+      <input type="file" id="chatFile" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" style="display:none" multiple>
+      <input id="msg" placeholder="Nachricht…" autocomplete="off">
+      <button class="snd" id="sendBtn"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4v6l12 2-12 2z"/></svg></button>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="view" id="settings">
+    <div class="cvhdr">
+      <button class="back" id="setBack">‹</button>
+      <div style="flex:1;min-width:0"><div class="nm">Einstellungen</div><div class="nu" id="setNum"></div></div>
+    </div>
+    <div class="scroll">
+      <div class="bigav">
+        <div class="inner" id="setAvImg">?</div>
+        <button class="edit" id="avEdit" title="Bild wählen"><svg viewBox="0 0 24 24"><path d="M12 5H5a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-7"/><path d="M18.5 3.5a2.1 2.1 0 013 3L12 16l-4 1 1-4z"/></svg></button>
+        <input type="file" id="avFile" accept="image/*" style="display:none">
+      </div>
+
+      <div class="setlbl">NAME</div>
+      <input id="setName" placeholder="Dein Name" maxlength="40" autocomplete="off">
+
+      <div class="setlbl">STATUS</div>
+      <input id="setStatus" placeholder="Was ist dein Status?" maxlength="60" autocomplete="off">
+      <div class="chips" id="statusChips"></div>
+
+      <div class="setlbl">DESIGN</div>
+      <div class="themepick" id="themePick">
+        <div class="opt" data-th="dunkel">🌙 Dunkel</div>
+        <div class="opt" data-th="hell">☀️ Hell</div>
+      </div>
+
+      <div style="margin-top:22px"><button id="setSave">Speichern</button></div>
+      <div class="card" style="margin-top:14px">
+        <div class="sub">Deine Nummer</div>
+        <div class="mynum" id="setMyNum" style="font-size:1.25rem;margin-top:6px">—</div>
+      </div>
+    </div>
   </div>
 
   <!-- ADD SHEET -->
@@ -124,6 +195,7 @@
     </div>
   </div>
 
+  <div class="lightbox" id="lightbox"><button class="x" data-lbclose>✕</button><img id="lbImg" alt=""></div>
   <div class="toast" id="toast"></div>
 </div>
 
@@ -149,14 +221,54 @@ const saveUnread=u=>LS.set("stilla_unread",u);
 let tT; function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),2600);}
 function show(v){document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id===v));}
 function avTxt(name){return (name||"?")[0].toUpperCase();}
+function setAv(el,p){ if(!el)return; if(p&&p.avatar){el.innerHTML='<img src="'+p.avatar+'" alt="">';} else {el.textContent=avTxt(p&&p.name);} }
+const STATUS_PRESETS=["🟢 Verfügbar","💬 Zum Reden da","🔕 Bitte nicht stören","😴 Schlafe","🎧 Musik an","💼 Arbeite","🚶 Unterwegs","📵 Offline","🤫 stilla","✌️ Entspannt"];
 
 /* ---------- Identität (TweetNaCl — jedes Gerät) ---------- */
 function newIdentity(name){
   const s=nacl.sign.keyPair(), b=nacl.box.keyPair();
-  return {name, signPub:b64(s.publicKey),signSec:b64(s.secretKey), kexPub:b64(b.publicKey),kexSec:b64(b.secretKey)};
+  return {name, avatar:"", status:"", signPub:b64(s.publicKey),signSec:b64(s.secretKey), kexPub:b64(b.publicKey),kexSec:b64(b.secretKey)};
 }
 function encrypt(theirKexPubB64,text){const n=nacl.randomBytes(24);const box=nacl.box(enc.encode(text),n,unb64(theirKexPubB64),unb64(me.kexSec));return {n:b64(n),c:b64(box)};}
 function decrypt(theirKexPubB64,env){const m=nacl.box.open(unb64(env.c),unb64(env.n),unb64(theirKexPubB64),unb64(me.kexSec));return m?dec.decode(m):null;}
+
+/* ---------- Nachrichten-Format (Text + optionaler Anhang) ---------- */
+function packMsg(text,att){return JSON.stringify({v:1,t:text||"",a:att||null});}
+function unpackMsg(raw){try{const o=JSON.parse(raw);if(o&&o.v===1)return{text:o.t||"",att:o.a||null};}catch{}return{text:raw,att:null};}
+
+/* Bild verkleinern -> data-URL (JPEG), damit die Umschläge klein bleiben */
+function shrinkImage(file){return new Promise((res,rej)=>{
+  const img=new Image();const url=URL.createObjectURL(file);
+  img.onload=()=>{URL.revokeObjectURL(url);
+    const max=1280;let{width:w,height:h}=img;
+    if(w>max||h>max){if(w>=h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
+    const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+    cv.getContext("2d").drawImage(img,0,0,w,h);
+    res(cv.toDataURL("image/jpeg",0.72));};
+  img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("Bild konnte nicht gelesen werden."));};
+  img.src=url;});}
+/* Avatar: quadratisch zuschneiden + klein (256px) */
+function shrinkImageSquare(file){return new Promise((res,rej)=>{
+  const img=new Image();const url=URL.createObjectURL(file);
+  img.onload=()=>{URL.revokeObjectURL(url);
+    const S=256,side=Math.min(img.width,img.height);
+    const sx=(img.width-side)/2,sy=(img.height-side)/2;
+    const cv=document.createElement("canvas");cv.width=S;cv.height=S;
+    cv.getContext("2d").drawImage(img,sx,sy,side,side,0,0,S,S);
+    res(cv.toDataURL("image/jpeg",0.8));};
+  img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("Bild konnte nicht gelesen werden."));};
+  img.src=url;});}
+/* beliebige Datei -> data-URL */
+function fileToDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(new Error("Datei konnte nicht gelesen werden."));r.readAsDataURL(file);});}
+function fmtSize(b){if(b<1024)return b+" B";if(b<1048576)return(b/1024).toFixed(0)+" KB";return(b/1048576).toFixed(1)+" MB";}
+function fileEmoji(mime,name){const n=(name||"").toLowerCase();
+  if((mime||"").startsWith("video/"))return"🎞️";if((mime||"").startsWith("audio/"))return"🎵";
+  if(/pdf/.test(mime)||n.endsWith(".pdf"))return"📕";
+  if(/word|document/.test(mime)||/\.docx?$/.test(n))return"📘";
+  if(/sheet|excel/.test(mime)||/\.xlsx?$|\.csv$/.test(n))return"📗";
+  if(/presentation|powerpoint/.test(mime)||/\.pptx?$/.test(n))return"📙";
+  if(/zip|rar|7z|compressed/.test(mime)||/\.(zip|rar|7z)$/.test(n))return"🗜️";
+  if((mime||"").startsWith("text/"))return"📄";return"📎";}
 
 /* ---------- Flow ---------- */
 async function createProfile(){
@@ -174,12 +286,12 @@ async function createProfile(){
 async function ensureRegistered(){
   // nach Server-Neustart kann unsere Nummer weg sein -> neu anmelden, Nummer behalten wenn möglich
   try{const k=await api("/keys?number="+me.number,"GET"); if(k&&!k.error) return;}catch{}
-  try{const reg=await api("/register","POST",{signPub:me.signPub,kexPub:me.kexPub,name:me.name});
+  try{const reg=await api("/register","POST",{signPub:me.signPub,kexPub:me.kexPub,name:me.name,avatar:me.avatar||"",status:me.status||""});
     if(reg&&reg.number){ me.number=reg.number; LS.set("stilla_me",me); }}catch{}
 }
 
 async function resolvePeer(num){
-  try{const k=await api("/keys?number="+num,"GET"); if(k&&!k.error){const c=contacts();c[num]={name:k.name||("Nummer "+fmt(num)),kexPub:k.kexPub};saveContacts(c);return c[num];}}catch{}
+  try{const k=await api("/keys?number="+num,"GET"); if(k&&!k.error){const c=contacts();c[num]={name:k.name||("Nummer "+fmt(num)),kexPub:k.kexPub,avatar:k.avatar||"",status:k.status||""};saveContacts(c);return c[num];}}catch{}
   return contacts()[num]||null;
 }
 
@@ -190,15 +302,37 @@ function renderContacts(){
   nums.sort((a,b)=>{const la=logOf(a),lb=logOf(b);return ((lb[lb.length-1]||{}).ts||0)-((la[la.length-1]||{}).ts||0);});
   box.innerHTML="";
   nums.forEach(n=>{const p=c[n]||{};const lg=logOf(n);const last=lg[lg.length-1];const uc=u[n]||0;
+    const preview=last?((last.from===me.number?"Du: ":"")+last.text):(p.status||fmt(n));
     const r=document.createElement("div");r.className="row";
-    r.innerHTML=`<div class="av">${esc(avTxt(p.name))}</div><div class="mid"><div class="nm">${esc(p.name||("Nummer "+fmt(n)))}</div><div class="pv">${last?esc((last.from===me.number?"Du: ":"")+last.text):fmt(n)}</div></div>${uc?`<span class="un">${uc>99?"99+":uc}</span>`:""}`;
+    const av=document.createElement("div");av.className="av";setAv(av,p);
+    const mid=document.createElement("div");mid.className="mid";
+    mid.innerHTML=`<div class="nm">${esc(p.name||("Nummer "+fmt(n)))}</div><div class="pv">${esc(preview)}</div>`;
+    r.appendChild(av);r.appendChild(mid);
+    if(uc){const b=document.createElement("span");b.className="un";b.textContent=uc>99?"99+":uc;r.appendChild(b);}
     r.onclick=()=>openChat(n);box.appendChild(r);
   });
 }
 
 function renderThread(n){
   const box=$("#thread");box.innerHTML="";
-  logOf(n).slice().sort((a,b)=>a.ts-b.ts).forEach(m=>{const d=document.createElement("div");d.className="bub "+(m.from===me.number?"out":"in");d.textContent=m.text;box.appendChild(d);});
+  logOf(n).slice().sort((a,b)=>a.ts-b.ts).forEach(m=>{
+    const d=document.createElement("div");d.className="bub "+(m.from===me.number?"out":"in");
+    const a=m.att;
+    if(a&&a.kind==="img"){
+      const img=document.createElement("img");img.className="bubimg";img.src=a.data;img.alt=a.name||"Bild";
+      img.onclick=()=>{$("#lbImg").src=a.data;$("#lightbox").classList.add("on");};
+      d.appendChild(img);
+      if(m.text){const c=document.createElement("div");c.className="cap";c.textContent=m.text;d.appendChild(c);}
+    }else if(a&&a.kind==="file"){
+      const link=document.createElement("a");link.className="filechip";link.href=a.data;link.download=a.name||"datei";
+      link.innerHTML=`<span class="fi">${fileEmoji(a.mime,a.name)}</span><span class="fm"><span class="fn">${esc(a.name||"Datei")}</span><span class="fs">${a.size?fmtSize(a.size):"herunterladen"}</span></span>`;
+      d.appendChild(link);
+      if(m.text){const c=document.createElement("div");c.className="cap";c.textContent=m.text;d.appendChild(c);}
+    }else{
+      d.textContent=m.text;
+    }
+    box.appendChild(d);
+  });
   box.scrollTop=1e9;
 }
 
@@ -206,7 +340,7 @@ async function openChat(num){
   const p=await resolvePeer(num)||{name:"Nummer "+fmt(num)};
   if(!p.kexPub){toast("Diese Nummer ist (noch) nicht erreichbar.");return;}
   peer={number:num,...p};
-  $("#peerName").textContent=p.name||("Nummer "+fmt(num));$("#peerNumLbl").textContent=fmt(num);$("#cvav").textContent=avTxt(p.name);
+  $("#peerName").textContent=p.name||("Nummer "+fmt(num));$("#peerNumLbl").textContent=p.status?p.status:fmt(num);setAv($("#cvav"),p);
   const u=unread();delete u[num];saveUnread(u);
   renderThread(num);show("chat");
 }
@@ -222,11 +356,32 @@ async function addByNumber(){
 
 function closeSheets(){document.querySelectorAll(".sheet").forEach(s=>s.classList.remove("on"));}
 
+async function deliver(text,att){
+  if(!peer)return;
+  const ts=Date.now();
+  const lg=logOf(peer.number);lg.push({from:me.number,text:text||"",att:att||null,ts});saveLog(peer.number,lg);renderThread(peer.number);renderContacts();
+  try{const env=encrypt(peer.kexPub,packMsg(text,att));await api("/send","POST",{to:peer.number,from:me.number,envelope:env,ts});}
+  catch(e){toast("Konnte nicht senden.");}
+}
 async function sendMsg(){
   const t=$("#msg").value.trim();if(!t||!peer)return;$("#msg").value="";
-  const lg=logOf(peer.number);lg.push({from:me.number,text:t,ts:Date.now()});saveLog(peer.number,lg);renderThread(peer.number);
-  try{const env=encrypt(peer.kexPub,t);await api("/send","POST",{to:peer.number,from:me.number,envelope:env});}
-  catch(e){toast("Konnte nicht senden.");}
+  deliver(t,null);
+}
+const MAX_FILE=3*1024*1024;   // 3 MB Rohdaten (Testlimit)
+async function sendFiles(files){
+  if(!peer||!files||!files.length)return;
+  for(const f of Array.from(files)){
+    try{
+      if(f.type&&f.type.startsWith("image/")){
+        const data=await shrinkImage(f);
+        await deliver("",{kind:"img",name:f.name,mime:"image/jpeg",data});
+      }else{
+        if(f.size>MAX_FILE){toast('"'+f.name+'" ist zu groß (max 3 MB im Test).');continue;}
+        const data=await fileToDataURL(f);
+        await deliver("",{kind:"file",name:f.name,mime:f.type||"",size:f.size,data});
+      }
+    }catch(e){toast((e&&e.message)||"Datei konnte nicht gesendet werden.");}
+  }
 }
 
 async function fetchLoop(){
@@ -237,10 +392,11 @@ async function fetchLoop(){
   for(const m of msgs){
     const from=m.from;if(!from)continue;
     const p=await resolvePeer(from); if(!p||!p.kexPub) continue;
-    const text=decrypt(p.kexPub,m.envelope); if(text==null) continue;
+    const raw=decrypt(p.kexPub,m.envelope); if(raw==null) continue;
+    const {text,att}=unpackMsg(raw);
     const lg=logOf(from);
     if(lg.some(x=>x.ts===m.ts&&x.from===from)) continue; // Dublette
-    lg.push({from,text,ts:m.ts||Date.now()});saveLog(from,lg);changed=true;
+    lg.push({from,text,att,ts:m.ts||Date.now()});saveLog(from,lg);changed=true;
     if(peer&&peer.number===from){openPeerTouched=true;}
     else{u[from]=(u[from]||0)+1;}
   }
@@ -248,11 +404,39 @@ async function fetchLoop(){
 }
 
 function startApp(){
-  $("#homeNum").textContent=fmt(me.number);$("#homeName").textContent=me.name;$("#sheetNum").textContent=fmt(me.number);
+  setAv($("#homeAv"),me);$("#sheetNum").textContent=fmt(me.number);
   renderContacts();show("home");
   ensureRegistered();
   if(poll)clearInterval(poll);
   fetchLoop(); poll=setInterval(fetchLoop,2500);
+}
+
+/* ---------- Einstellungen ---------- */
+let pendingAvatar=null;   // gewähltes, noch nicht gespeichertes Bild
+function applyTheme(t){ if(t==="hell")document.documentElement.setAttribute("data-t","hell"); else document.documentElement.removeAttribute("data-t"); LS.set("stilla_theme",t); markTheme(t); }
+function markTheme(t){document.querySelectorAll("#themePick .opt").forEach(o=>o.classList.toggle("sel",o.dataset.th===t));}
+function openSettings(){
+  pendingAvatar=null;
+  $("#setName").value=me.name||"";
+  $("#setStatus").value=me.status||"";
+  $("#setNum").textContent=fmt(me.number);
+  $("#setMyNum").textContent=fmt(me.number);
+  setAv($("#setAvImg"),me);
+  const chips=$("#statusChips");chips.innerHTML="";
+  STATUS_PRESETS.forEach(s=>{const b=document.createElement("button");b.className="chip";b.type="button";b.textContent=s;b.onclick=()=>{$("#setStatus").value=s;};chips.appendChild(b);});
+  markTheme(LS.get("stilla_theme","dunkel"));
+  show("settings");
+}
+async function saveSettings(){
+  me.name=($("#setName").value||"").trim()||"anonym";
+  me.status=($("#setStatus").value||"").trim();
+  if(pendingAvatar!=null) me.avatar=pendingAvatar;
+  LS.set("stilla_me",me);
+  setAv($("#homeAv"),me);
+  // eigenen Kontakt-Eintrag (falls vorhanden) aktualisieren, damit die Vorschau stimmt
+  try{await api("/profile","POST",{number:me.number,name:me.name,avatar:me.avatar||"",status:me.status||""});}catch{}
+  toast("Gespeichert ✓");
+  renderContacts();show("home");
 }
 
 /* ---------- Events ---------- */
@@ -266,7 +450,24 @@ $("#sendBtn").onclick=sendMsg;
 $("#msg").addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg();});
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheets);
 $("#copyNum").onclick=async()=>{try{await navigator.clipboard.writeText(me.number);toast("Nummer kopiert ✓");}catch{toast("Deine Nummer: "+fmt(me.number));}};
-$("#themeBtn").onclick=()=>{const cur=document.documentElement.getAttribute("data-t")==="hell"?"dunkel":"hell";if(cur==="hell")document.documentElement.setAttribute("data-t","hell");else document.documentElement.removeAttribute("data-t");LS.set("stilla_theme",cur);};
+
+/* Einstellungen */
+$("#settingsBtn").onclick=openSettings;
+$("#homeAv").onclick=openSettings;
+$("#setBack").onclick=()=>{renderContacts();show("home");};
+$("#setSave").onclick=saveSettings;
+$("#avEdit").onclick=()=>$("#avFile").click();
+$("#avFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;
+  try{pendingAvatar=await shrinkImageSquare(f);setAv($("#setAvImg"),{avatar:pendingAvatar});}
+  catch(err){toast((err&&err.message)||"Bild konnte nicht geladen werden.");}
+  e.target.value="";};
+document.querySelectorAll("#themePick .opt").forEach(o=>o.onclick=()=>applyTheme(o.dataset.th));
+
+/* Datei/Bild im Chat */
+$("#clipBtn").onclick=()=>$("#chatFile").click();
+$("#chatFile").onchange=e=>{sendFiles(e.target.files);e.target.value="";};
+$("#lbImg").onclick=()=>$("#lightbox").classList.remove("on");
+document.querySelectorAll("[data-lbclose]").forEach(b=>b.onclick=()=>$("#lightbox").classList.remove("on"));
 
 /* boot */
 if(LS.get("stilla_theme","dunkel")==="hell")document.documentElement.setAttribute("data-t","hell");

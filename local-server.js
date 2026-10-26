@@ -45,8 +45,17 @@ const server = http.createServer(async (req,res)=>{
 
   if(req.method==="POST" && p==="/register"){ const b=await body(req);
     if(!b.signPub||!b.kexPub) return send(res,400,{error:"keys missing"});
-    const number=nextNumber(); directory.set(number,{signPub:b.signPub,kexPub:b.kexPub,name:b.name||""});
+    const number=nextNumber(); directory.set(number,{signPub:b.signPub,kexPub:b.kexPub,name:b.name||"",avatar:b.avatar||"",status:b.status||""});
     return send(res,200,{number}); }
+
+  // Profil aktualisieren (Name, Avatar, Status) — Testversion ohne Signatur-Zwang
+  if(req.method==="POST" && p==="/profile"){ const b=await body(req);
+    const e=directory.get(b.number); if(!e) return send(res,404,{error:"unknown number"});
+    if(typeof b.name==="string") e.name=b.name.slice(0,40);
+    if(typeof b.avatar==="string") e.avatar=b.avatar.slice(0,200000);   // kleines Bild als data-URL
+    if(typeof b.status==="string") e.status=b.status.slice(0,60);
+    directory.set(b.number,e);
+    return send(res,200,{ok:true}); }
 
   if(req.method==="GET" && p==="/keys"){ const e=directory.get(url.searchParams.get("number"));
     return e?send(res,200,{number:url.searchParams.get("number"),...e}):send(res,404,{error:"unknown number"}); }
