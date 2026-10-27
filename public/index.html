@@ -66,8 +66,17 @@
   .row .pin{color:var(--muted);font-size:.8rem;margin-left:2px}
   .inbar input{flex:1}.inbar .snd{width:46px;flex:none;display:flex;align-items:center;justify-content:center}
   .inbar .snd svg{width:18px;height:18px;fill:var(--on)}
-  .inbar .clip{flex:none;color:var(--muted);transform:rotate(0deg)}
+  .inbar .clip{flex:none;color:var(--muted)}
   .inbar .clip svg{width:22px;height:22px}
+  .inbar .emo{flex:none;color:var(--muted)}
+  .inbar .emo svg{width:23px;height:23px}
+  .inbar .emo.on{color:var(--accent)}
+  .emojibar{flex:none;display:none;max-height:40vh;overflow-y:auto;background:var(--s2);border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin-bottom:6px}
+  .emojibar.on{display:block}
+  .emojibar .ecat{font-size:.68rem;color:var(--muted);margin:8px 2px 4px;letter-spacing:.04em}
+  .emojibar .egrid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
+  .emojibar .egrid button{background:none;border:none;font-size:1.5rem;line-height:1;padding:6px 0;cursor:pointer;border-radius:8px;width:100%}
+  .emojibar .egrid button:hover{background:var(--line)}
   .bub img.bubimg{max-width:100%;border-radius:11px;display:block;cursor:pointer}
   .bub .cap{margin-top:6px}
   .filechip{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;min-width:180px}
@@ -237,10 +246,12 @@
     </div>
     <div class="e2e">🔒 Ende-zu-Ende verschlüsselt</div>
     <div class="thread" id="thread"></div>
+    <div class="emojibar" id="emojibar"></div>
     <div class="inbar">
+      <button class="ic emo" id="emojiBtn" aria-label="Emoji"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4 4 0 007 0"/><circle cx="9" cy="10" r="0.6" fill="currentColor"/><circle cx="15" cy="10" r="0.6" fill="currentColor"/></svg></button>
       <button class="ic clip" id="clipBtn" aria-label="Datei"><svg viewBox="0 0 24 24"><path d="M21 11.5l-8.5 8.5a5 5 0 01-7-7l8.5-8.5a3.3 3.3 0 014.7 4.7l-8.5 8.5a1.6 1.6 0 01-2.3-2.3l7.8-7.8"/></svg></button>
-      <input type="file" id="chatFile" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" style="display:none" multiple>
-      <input id="msg" placeholder="Nachricht…" autocomplete="off">
+      <input type="file" id="chatFile" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.gif" style="display:none" multiple>
+      <input id="msg" placeholder="Nachricht…" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="send" inputmode="text">
       <button class="snd" id="sendBtn"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4v6l12 2-12 2z"/></svg></button>
     </div>
   </div>
@@ -486,7 +497,7 @@ async function openChat(num){
   lg.forEach(m=>{if(m.from===num){if(m.ts>maxIn)maxIn=m.ts;if(!m.readAt){m.readAt=Date.now();ch=true;}}});
   if(ch)saveLog(num,lg);
   if(maxIn&&receiptsOn())sendAck(num,"read",maxIn);
-  renderThread(num);show("chat");
+  closeEmoji();renderThread(num);show("chat");
 }
 
 async function addByNumber(){
@@ -539,6 +550,7 @@ function autodelSweep(){
 }
 async function sendMsg(){
   const t=$("#msg").value.trim();if(!t||!peer)return;$("#msg").value="";
+  closeEmoji();
   deliver(t,null);
 }
 const MAX_FILE=3*1024*1024;    // 3 MB Rohdaten (Testlimit)
@@ -547,7 +559,11 @@ async function sendFiles(files){
   if(!peer||!files||!files.length)return;
   for(const f of Array.from(files)){
     try{
-      if(f.type&&f.type.startsWith("image/")){
+      if(f.type==="image/gif"){
+        if(f.size>MAX_VIDEO){toast('"'+f.name+'" ist zu groß (max '+fmtSize(MAX_VIDEO)+' im Test).');continue;}
+        const data=await fileToDataURL(f);   // GIF unverändert -> bleibt animiert
+        await deliver("",{kind:"img",name:f.name,mime:"image/gif",data});
+      }else if(f.type&&f.type.startsWith("image/")){
         const data=await shrinkImage(f);
         await deliver("",{kind:"img",name:f.name,mime:"image/jpeg",data});
       }else{
@@ -765,6 +781,35 @@ $("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")addByNumber();})
 $("#backBtn").onclick=()=>{peer=null;go("home");};
 $("#sendBtn").onclick=sendMsg;
 $("#msg").addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg();});
+
+/* ---------- Emoji-Panel ---------- */
+const STILLA_EMO="🤫 🌙 ✨ 🌊 🕊️ 🫧 💤 🔕 🧊 🪶";
+const EMOJI={
+ "Smileys":"😀 😃 😄 😁 😆 😅 😂 🤣 🙂 🙃 😉 😊 😇 🥰 😍 😘 😗 😚 😙 😋 😛 😜 🤪 😝 🤗 🤭 🤫 🤔 😐 😑 😶 😏 😒 🙄 😬 😌 😔 😴 😪 🤤 😷 🤒 🤕 🥴 😵 🤯 🥳 🥺 😢 😭 😤 😠 😡 🤬 😈 💀 🤡 😺 😻 🙀",
+ "Gesten":"👍 👎 👌 🤌 🤏 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 🤝 🙏 ✍️ 💪 🫶 🤲 👐 🙌 👏 🫡 🫢 💅 🤳 🧠 👀 👁️ 👣 🦾",
+ "Herzen":"❤️ 🧡 💛 💚 💙 💜 🤎 🖤 🤍 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ♥️ 💋 🌹 💐",
+ "Tiere & Natur":"🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🦅 🦉 🐺 🐴 🦄 🐝 🦋 🐢 🐍 🐙 🐬 🐳 🦈 🌵 🌲 🌳 🌴 🌸 🌻 🌞 🌙 ⭐ 🌟 ✨ ⚡ 🔥 🌈 ❄️ 💧 🌊",
+ "Essen":"🍎 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍒 🍑 🥭 🍍 🥝 🍅 🥑 🌽 🥕 🍔 🍟 🍕 🌭 🥪 🌮 🌯 🍜 🍝 🍣 🍤 🍚 🍦 🍰 🎂 🍫 🍬 🍭 🍪 ☕ 🍵 🍺 🍻 🥂 🍷 🥃 🍸",
+ "Aktivität & Reise":"⚽ 🏀 🏈 ⚾ 🎾 🏐 🏓 🏸 🥊 🎯 🎮 🎲 🎸 🎧 🎤 🎬 🚗 🚕 🚙 🚌 🏍️ ✈️ 🚀 🛸 ⛵ 🏖️ 🏔️ 🗺️ 🧭 🏕️ 🎡",
+ "Symbole":"✅ ❌ ⭕ ❗ ❓ 💯 ⚠️ 🚫 ♻️ 🔒 🔓 🔑 💡 🔔 ⏰ 📵 🔋 💬 💭 ✔️ ➕ ➖ 🟢 🔴 🟡 🔵 ⚫ ⚪"
+};
+let emojiBuilt=false;
+function buildEmojis(){
+  if(emojiBuilt)return;emojiBuilt=true;
+  const bar=$("#emojibar");bar.innerHTML="";
+  const addCat=(title,list)=>{const c=document.createElement("div");c.className="ecat";c.textContent=title;bar.appendChild(c);
+    const g=document.createElement("div");g.className="egrid";
+    list.trim().split(/\s+/).forEach(e=>{const b=document.createElement("button");b.type="button";b.textContent=e;b.onclick=()=>insertEmoji(e);g.appendChild(b);});
+    bar.appendChild(g);};
+  addCat("stilla",STILLA_EMO);
+  for(const k in EMOJI)addCat(k,EMOJI[k]);
+}
+function insertEmoji(e){const i=$("#msg");const s=i.selectionStart,en=i.selectionEnd,v=i.value;
+  if(typeof s==="number"){i.value=v.slice(0,s)+e+v.slice(en);const p=s+e.length;try{i.setSelectionRange(p,p);}catch{}}else{i.value=v+e;}
+  i.focus();}
+function closeEmoji(){$("#emojibar").classList.remove("on");$("#emojiBtn").classList.remove("on");}
+function toggleEmoji(){buildEmojis();const on=$("#emojibar").classList.toggle("on");$("#emojiBtn").classList.toggle("on",on);if(on)$("#msg").focus();}
+$("#emojiBtn").onclick=toggleEmoji;
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheets);
 $("#copyNum").onclick=async()=>{try{await navigator.clipboard.writeText(me.number);toast("Nummer kopiert ✓");}catch{toast("Deine Nummer: "+fmt(me.number));}};
 
