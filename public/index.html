@@ -56,7 +56,7 @@
   /* chat */
   .cvhdr{flex:none;display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
   .back{background:none;border:none;color:var(--fg);cursor:pointer;font-size:1.4rem;width:auto;padding:0 4px}
-  .cvhdr .av{width:34px;height:34px}.cvhdr .nm{font-weight:600;font-size:.95rem}
+  .cvhdr .av{width:34px;height:34px;cursor:pointer}.cvhdr .nm{font-weight:600;font-size:.95rem}
   .cvhdr .nu{font-family:ui-monospace,monospace;font-size:.6rem;color:var(--accent)}
   .e2e{color:var(--accent);font-size:.66rem;font-family:ui-monospace,monospace;text-align:center;padding:6px 0}
   .thread{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:8px 0}
@@ -248,6 +248,41 @@
   .svlike{position:absolute;right:16px;bottom:calc(22px + env(safe-area-inset-bottom,0px));background:rgba(0,0,0,.4);border:none;width:52px;height:52px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:4}
   .svlike svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:2}
   .svlike.liked svg{fill:#ff5a7a;stroke:#ff5a7a}
+  /* Story-Editor (Text/Emoji aufs Bild) */
+  .storyedit{position:absolute;inset:0;z-index:68;background:#000;display:none;flex-direction:column}
+  .storyedit.on{display:flex}
+  .sehead{display:flex;align-items:center;gap:10px;padding:10px 14px;z-index:3}
+  .sehead .x{background:none;border:none;color:#fff;font-size:1.4rem;width:auto;cursor:pointer;padding:4px}
+  .setools{margin-left:auto;display:flex;gap:8px}
+  .setools button{background:rgba(255,255,255,.16);border:none;color:#fff;border-radius:999px;width:auto;padding:8px 13px;font-weight:700;cursor:pointer;font-size:1rem;line-height:1}
+  .seshare{background:var(--accent);color:var(--on);border:none;border-radius:999px;width:auto;padding:9px 18px;font-weight:600;cursor:pointer}
+  .sestage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
+  .secanvas{position:relative;max-width:100%;max-height:100%;touch-action:none}
+  .secanvas img{display:block;width:100%;height:100%;object-fit:contain;border-radius:8px;pointer-events:none}
+  .seov{position:absolute;transform:translate(-50%,-50%);cursor:grab;user-select:none;-webkit-user-select:none;white-space:nowrap;touch-action:none;line-height:1.1}
+  .seov.text{font-weight:800;text-shadow:0 2px 8px rgba(0,0,0,.55);padding:2px 6px}
+  .sehint{position:absolute;left:0;right:0;bottom:8px;text-align:center;color:rgba(255,255,255,.6);font-size:.74rem;pointer-events:none}
+  .seemoji{display:none;gap:4px;padding:8px 10px;overflow-x:auto;background:#111;z-index:3}
+  .seemoji::-webkit-scrollbar{display:none}
+  .seemoji.on{display:flex}
+  .seemoji button{background:none;border:none;font-size:1.7rem;cursor:pointer;width:auto;padding:4px;flex:none}
+  .setext{position:absolute;left:12px;right:12px;bottom:16px;z-index:5;display:none}
+  .setext.on{display:block}
+  /* Profilseite */
+  .profile{position:absolute;inset:0;z-index:58;background:var(--bg);display:none;flex-direction:column}
+  .profile.on{display:flex}
+  .prhead{flex:none;display:flex;align-items:center;gap:8px;padding:11px 10px;border-bottom:1px solid var(--line)}
+  .prhead .nm{font-weight:600;font-size:1rem}
+  .prtop{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:18px 16px 12px}
+  .prtop .av{width:94px;height:94px;font-size:2.1rem}
+  .prname{font-weight:600;font-size:1.15rem;margin-top:6px}
+  .prstatus{color:var(--muted);font-size:.88rem;text-align:center}
+  .prnum{font-family:ui-monospace,monospace;font-size:.72rem;color:var(--accent);letter-spacing:.08em}
+  .prmsg{margin-top:12px;width:auto;padding:10px 26px;border-radius:999px}
+  .prtabs{flex:none;display:flex;border-bottom:1px solid var(--line)}
+  .prtabs button{flex:1;background:none;border:none;color:var(--muted);padding:11px;font-family:ui-monospace,monospace;font-weight:600;font-size:.72rem;letter-spacing:.08em;border-radius:0;border-bottom:2px solid transparent;cursor:pointer}
+  .prtabs button.sel{color:var(--accent);border-bottom-color:var(--accent)}
+  .prfeed{flex:1;min-height:0;overflow-y:auto;padding:0 2px}
 
   /* Aktionsmenü (Langdruck) */
   #menu{position:absolute;inset:0;z-index:55;background:rgba(5,8,12,.55);display:none;align-items:flex-end;justify-content:center}
@@ -441,6 +476,36 @@
     </div>
     <button class="svlike" id="svLike" aria-label="Gefällt mir"><svg viewBox="0 0 24 24"><path d="M12 21s-8-4.8-8-10.5A4.5 4.5 0 0112 7a4.5 4.5 0 018 3.5C20 16.2 12 21 12 21z"/></svg></button>
   </div>
+  <div class="storyedit" id="storyedit">
+    <div class="sehead">
+      <button class="x" id="seCancel" aria-label="Abbrechen">✕</button>
+      <div class="setools">
+        <button id="seAddText" aria-label="Text">Aa</button>
+        <button id="seAddEmoji" aria-label="Emoji">😊</button>
+      </div>
+      <button class="seshare" id="seShare">Zur Story</button>
+    </div>
+    <div class="sestage" id="seStage"><div class="secanvas" id="seCanvas"><img id="seImg" alt=""></div><div class="sehint" id="seHint">Text/Emoji hinzufügen und frei verschieben · Text antippen = Farbe</div></div>
+    <div class="seemoji" id="seEmojiRow"></div>
+    <input id="seText" class="setext" placeholder="Text eingeben…" maxlength="60" autocomplete="off">
+  </div>
+
+  <!-- PROFIL -->
+  <div class="profile" id="profile">
+    <div class="prhead"><button class="back" id="prBack">‹</button><div class="nm" id="prHeadName">Profil</div></div>
+    <div class="prtop">
+      <div class="av" id="prAv">?</div>
+      <div class="prname" id="prName">—</div>
+      <div class="prstatus" id="prStatus"></div>
+      <div class="prnum" id="prNum"></div>
+    </div>
+    <div class="prtabs">
+      <button data-pn="chats" id="prChats">💬 Chats</button>
+      <button data-pn="pic" id="prPics" class="sel">P1CZ</button>
+      <button data-pn="clip" id="prClips">CL1PZ</button>
+    </div>
+    <div class="prfeed feed" id="prFeed"></div>
+  </div>
   <div id="menu"><div class="mcard" id="menuCard"></div></div>
   <div class="toast" id="toast"></div>
 </div>
@@ -597,9 +662,10 @@ function renderContacts(){
     if(last){const body=last.del?"🚫 Nachricht gelöscht":(last.att?(last.att.kind==="img"?"📷 Bild":last.att.kind==="video"?"🎞️ Video":last.att.kind==="file"?"📎 Datei":last.text):last.text);preview=(isMine(last)?"Du: ":"")+body;}
     else preview=p.status||fmt(n);
     const r=document.createElement("div");r.className="row";
-    const aw=document.createElement("div");aw.className="avwrap";
+    const aw=document.createElement("div");aw.className="avwrap";aw.style.cursor="pointer";
     const av=document.createElement("div");av.className="av";setAv(av,p);aw.appendChild(av);
     if(online.has(n)){const dot=document.createElement("span");dot.className="onlinedot";aw.appendChild(dot);}
+    aw.onclick=e=>{e.stopPropagation();if(clickGuarded())return;openProfile(n);};
     const mid=document.createElement("div");mid.className="mid";
     mid.innerHTML=`<div class="nm">${esc(p.name||("Nummer "+fmt(n)))}${isPin?' <span class="pin">📌</span>':''}</div><div class="pv">${esc(preview)}</div>`;
     r.appendChild(aw);r.appendChild(mid);
@@ -939,7 +1005,7 @@ function openPost(medium,id){
   const post=feedOf(medium).find(p=>p.id===id);if(!post)return;
   const card=$("#pvCard");card.innerHTML="";
   const head=document.createElement("div");head.className="pvhead";
-  const av=document.createElement("div");av.className="av";setAv(av,post);
+  const av=document.createElement("div");av.className="av";av.style.cursor="pointer";setAv(av,post);av.onclick=()=>{closePost();openProfile(post.owner);};
   const who=(post.owner===me.number)?"Du":(post.name||("Nummer "+fmt(post.owner)));
   const hi=document.createElement("div");hi.innerHTML=`<div class="pn">${esc(who)}</div><div class="pt">${timeAgo(post.ts)}</div>`;
   head.appendChild(av);head.appendChild(hi);
@@ -1046,6 +1112,84 @@ async function storyLike(){
   if(s.owner===me.number){toast("Deine eigene Story 🙂");return;}
   if(s.postId){ await reactTo(s.medium,{id:s.postId,owner:s.owner},"❤️"); $("#svLike").classList.add("liked"); toast("❤️ – wird beim Beitrag übernommen"); }
   else{ await sendCtrl(s.owner,(contacts()[s.owner]||s).kexPub,{kind:"storylike",ts:Date.now()}); $("#svLike").classList.add("liked"); toast("❤️ gesendet"); }
+}
+
+/* ---------- Story-Editor (Text/Emoji aufs Bild) ---------- */
+const SE_EMOJI=["😀","😂","😍","🥰","😎","😮","😢","😡","👍","🔥","❤️","✨","🎉","💯","🙌","👏","🤝","🌙","⭐","🌈","☀️","💧","🎵","📍","💬","🤫","🕊️","🫶","😴","🥳"];
+const SE_COLORS=["#ffffff","#000000","#7cc3bb","#ffd84d","#ff5a7a","#5aa9ff"];
+function openStoryEditor(dataUrl){
+  const img=$("#seImg");$("#seCanvas").querySelectorAll(".seov").forEach(e=>e.remove());
+  img.onload=()=>{$("#seCanvas").style.aspectRatio=img.naturalWidth+"/"+img.naturalHeight;};
+  img.src=dataUrl;
+  $("#seEmojiRow").classList.remove("on");$("#seText").classList.remove("on");$("#seText").value="";
+  buildSeEmoji();$("#storyedit").classList.add("on");
+}
+function closeStoryEditor(){$("#storyedit").classList.remove("on");}
+function buildSeEmoji(){const row=$("#seEmojiRow");if(row.dataset.built)return;row.dataset.built="1";
+  SE_EMOJI.forEach(e=>{const b=document.createElement("button");b.type="button";b.textContent=e;b.onclick=()=>{addOverlay("emoji",e);row.classList.remove("on");};row.appendChild(b);});}
+function addOverlay(type,txt){
+  const el=document.createElement("div");el.className="seov "+type;el.textContent=txt;
+  el.dataset.type=type;el.dataset.x="0.5";el.dataset.y="0.5";
+  el.dataset.frac=(type==="emoji"?"0.13":"0.07");el.dataset.ci="0";
+  el.style.left="50%";el.style.top="50%";
+  if(type==="text"){el.style.color=SE_COLORS[0];}
+  const h=$("#seCanvas").clientHeight||360;el.style.fontSize=(parseFloat(el.dataset.frac)*h)+"px";
+  makeDraggable(el);$("#seCanvas").appendChild(el);
+}
+function cycleColor(el){let ci=(parseInt(el.dataset.ci||"0")+1)%SE_COLORS.length;el.dataset.ci=ci;el.style.color=SE_COLORS[ci];}
+function makeDraggable(el){
+  let on=false,moved=false,sx,sy,ox,oy;
+  const rect=()=>$("#seCanvas").getBoundingClientRect();
+  el.addEventListener("pointerdown",e=>{e.preventDefault();on=true;moved=false;try{el.setPointerCapture(e.pointerId);}catch{}sx=e.clientX;sy=e.clientY;ox=parseFloat(el.dataset.x);oy=parseFloat(el.dataset.y);el.style.cursor="grabbing";});
+  el.addEventListener("pointermove",e=>{if(!on)return;const r=rect();const nx=Math.min(1,Math.max(0,ox+(e.clientX-sx)/r.width)),ny=Math.min(1,Math.max(0,oy+(e.clientY-sy)/r.height));if(Math.abs(e.clientX-sx)>3||Math.abs(e.clientY-sy)>3)moved=true;el.dataset.x=nx;el.dataset.y=ny;el.style.left=(nx*100)+"%";el.style.top=(ny*100)+"%";});
+  const end=()=>{if(!on)return;on=false;el.style.cursor="grab";if(!moved&&el.dataset.type==="text")cycleColor(el);};
+  el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
+  // Doppeltipp entfernt das Element
+  let lastTap=0;el.addEventListener("pointerdown",()=>{const t=Date.now();if(t-lastTap<300)el.remove();lastTap=t;});
+}
+function compositeStory(){
+  const img=$("#seImg");const w=img.naturalWidth||1080,h=img.naturalHeight||1080;
+  const cv=document.createElement("canvas");cv.width=w;cv.height=h;const ctx=cv.getContext("2d");
+  ctx.drawImage(img,0,0,w,h);ctx.textAlign="center";ctx.textBaseline="middle";
+  $("#seCanvas").querySelectorAll(".seov").forEach(el=>{
+    const x=parseFloat(el.dataset.x)*w,y=parseFloat(el.dataset.y)*h,fs=parseFloat(el.dataset.frac||"0.07")*h;
+    ctx.font="800 "+fs+"px -apple-system,system-ui,'Segoe UI',sans-serif";
+    if(el.dataset.type==="text"){ctx.save();ctx.shadowColor="rgba(0,0,0,.5)";ctx.shadowBlur=fs*0.22;ctx.shadowOffsetY=fs*0.06;ctx.fillStyle=el.style.color||"#fff";ctx.fillText(el.textContent,x,y);ctx.restore();}
+    else{ctx.fillText(el.textContent,x,y);}
+  });
+  return cv.toDataURL("image/jpeg",0.82);
+}
+async function storyEditShare(){
+  try{const data=compositeStory();closeStoryEditor();const n=await shareStoryData(data,"image/jpeg");
+    toast(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte.");
+  }catch(e){toast((e&&e.message)||"Konnte Story nicht erstellen.");}
+}
+
+/* ---------- Profilseite (Pics/Clips einer Person) ---------- */
+let profNum=null,profTab="pic";
+function openProfile(num){
+  if(!num)return;profNum=num;profTab="pic";
+  const p=(num===me.number)?me:(contacts()[num]||{});
+  setAv($("#prAv"),p);
+  const nm=(num===me.number?me.name:(p.name||("Nummer "+fmt(num))));
+  $("#prName").textContent=nm;$("#prHeadName").textContent=(num===me.number?"Dein Profil":nm);
+  $("#prStatus").textContent=p.status||"";$("#prNum").textContent=fmt(num);
+  $("#prChats").style.display=(num===me.number)?"none":"";
+  markProfTab();renderProfileFeed();$("#profile").classList.add("on");
+}
+function closeProfile(){$("#profile").classList.remove("on");profNum=null;}
+function markProfTab(){document.querySelectorAll("#prPics,#prClips").forEach(b=>b.classList.toggle("sel",b.dataset.pn===profTab));}
+function renderProfileFeed(){
+  const box=$("#prFeed");box.innerHTML="";
+  const f=feedOf(profTab).filter(p=>p.owner===profNum);
+  if(!f.length){box.innerHTML='<div class="empty" style="padding:40px 18px">Noch nichts in '+(profTab==="pic"?"P1CZ":"CL1PZ")+'.</div>';return;}
+  const grid=document.createElement("div");grid.className="feedgrid";
+  f.forEach(post=>{const t=document.createElement("div");t.className="tile";
+    if(profTab==="pic"){const img=document.createElement("img");img.src=post.data;t.appendChild(img);}
+    else{const v=document.createElement("video");v.src=post.data;v.muted=true;v.playsInline=true;v.preload="metadata";t.appendChild(v);const h=document.createElement("div");h.className="vhint";h.innerHTML='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';t.appendChild(h);}
+    const likes=post.likes||{};const cnt=Object.keys(likes).length;if(cnt){const bd=document.createElement("div");bd.className="likebadge";bd.textContent=[...new Set(Object.values(likes))].slice(0,2).join("")+(cnt>1?(" "+cnt):"");t.appendChild(bd);}
+    t.onclick=()=>openPost(profTab,post.id);grid.appendChild(t);});
+  box.appendChild(grid);
 }
 function renderStories(){
   const items=storiesAll();const groups={};items.forEach(s=>{(groups[s.owner]=groups[s.owner]||[]).push(s);});
@@ -1229,7 +1373,24 @@ $("#compX").onclick=closeComposer;
 $("#composer").onclick=e=>{if(e.target.id==="composer")closeComposer();};
 $("#compShare").onclick=doShare;
 $("#compDesc").addEventListener("input",()=>{$("#compCount").textContent=$("#compDesc").value.length;});
-$("#storyFile").onchange=e=>{if(e.target.files&&e.target.files.length)addStory(e.target.files);e.target.value="";};
+$("#storyFile").onchange=async e=>{const fs=e.target.files;e.target.value="";
+  if(!fs||!fs.length)return;
+  if(fs.length===1&&(fs[0].type||"").startsWith("image/")){ try{const d=await shrinkImage(fs[0]);openStoryEditor(d);}catch(err){toast("Bild konnte nicht geladen werden.");} }
+  else addStory(fs);   // mehrere -> Album ohne Editor
+};
+$("#seCancel").onclick=closeStoryEditor;
+$("#seShare").onclick=storyEditShare;
+$("#seAddEmoji").onclick=()=>$("#seEmojiRow").classList.toggle("on");
+$("#seAddText").onclick=()=>{const i=$("#seText");i.value="";i.classList.add("on");i.focus();};
+$("#seText").addEventListener("keydown",e=>{if(e.key==="Enter"){const v=$("#seText").value.trim();$("#seText").value="";$("#seText").classList.remove("on");$("#seText").blur();if(v)addOverlay("text",v);}});
+$("#seText").addEventListener("blur",()=>{const v=$("#seText").value.trim();$("#seText").value="";$("#seText").classList.remove("on");if(v)addOverlay("text",v);});
+
+/* Profil */
+$("#prBack").onclick=closeProfile;
+$("#prChats").onclick=()=>{const n=profNum;closeProfile();if(n)openChat(n);};
+$("#prPics").onclick=()=>{profTab="pic";markProfTab();renderProfileFeed();};
+$("#prClips").onclick=()=>{profTab="clip";markProfTab();renderProfileFeed();};
+$("#cvav").onclick=()=>{if(peer)openProfile(peer.number);};
 /* Story-Viewer */
 $("#svClose").onclick=closeStory;
 $("#svNext").onclick=storyNext;
