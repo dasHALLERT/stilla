@@ -17,12 +17,33 @@ const path = require("node:path");
 const os = require("node:os");
 const nacl = require("tweetnacl");   // geprüfte Krypto, läuft überall (auch iPhone)
 
+// Web-Push (Benachrichtigungen). Der PRIVATE Schlüssel kommt ausschließlich aus
+// der Umgebungsvariable VAPID_PRIVATE (niemals in den Code/ins Repo!). Ohne ihn
+// laufen alle anderen Funktionen normal weiter, nur Push ist dann aus.
+let webpush=null;
+const VAPID_PUBLIC = process.env.VAPID_PUBLIC || "BBp8lGotK5Uoo2qFmxuTSSiAPq9PfaEKgS67ZjijzkIx0K8d6YgyM-z1kTMAXnv6PAXFBd3zFzTKJp-uj4m6m94";
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE || "";
+if(VAPID_PRIVATE){
+  try{ webpush=require("web-push"); webpush.setVapidDetails("mailto:info@dashallert.de", VAPID_PUBLIC, VAPID_PRIVATE); }
+  catch(e){ console.log("  (web-push nicht verfügbar – Benachrichtigungen aus)"); }
+}else{
+  console.log("  (VAPID_PRIVATE nicht gesetzt – Benachrichtigungen aus, siehe Render-Env)");
+}
+
 const directory = new Map();   // number -> { signPub, kexPub, name }
 const mailbox   = new Map();   // number -> [ {from, envelope, ts} ]
 const challenges = new Map();
 const lastSeen  = new Map();   // number -> Zeitpunkt des letzten Lebenszeichens (Präsenz)
+const pushSubs  = new Map();   // number -> Push-Subscription (für Benachrichtigungen)
 const ONLINE_MS = 30000;       // als "online" gilt, wer < 30 s aktiv war
 const nextNumber = () => { for(;;){ const n=String(crypto.randomInt(100000000,1000000000)); if(!directory.has(n)) return n; } };
+
+function pushTo(number){
+  if(!webpush) return;
+  const sub=pushSubs.get(number); if(!sub) return;
+  const payload=JSON.stringify({title:"stilla",body:"Neue Nachricht"});   // neutral, kein Inhalt
+  webpush.sendNotification(sub,payload).catch(err=>{ if(err&&(err.statusCode===404||err.statusCode===410)) pushSubs.delete(number); });
+}
 
 function send(res,code,obj){ res.writeHead(code,{"Content-Type":"application/json"}); res.end(JSON.stringify(obj)); }
 function body(req){ return new Promise(r=>{let d="";req.on("data",c=>d+=c);req.on("end",()=>{try{r(JSON.parse(d||"{}"));}catch{r({});}});}); }
@@ -44,6 +65,13 @@ const server = http.createServer(async (req,res)=>{
   const url = new URL(req.url,"http://x"); const p = url.pathname;
 
   if(req.method==="GET" && (p==="/"||p==="/index.html")){ res.writeHead(200,{"Content-Type":"text/html; charset=utf-8"}); return res.end(CLIENT); }
+
+  // statische PWA-Dateien
+  const STATIC={ "/manifest.json":["manifest.json","application/json; charset=utf-8"], "/sw.js":["sw.js","text/javascript; charset=utf-8"], "/icon-192.png":["icon-192.png","image/png"], "/icon-512.png":["icon-512.png","image/png"], "/apple-touch-icon.png":["apple-touch-icon.png","image/png"] };
+  if(req.method==="GET" && STATIC[p]){ try{ const [f,ct]=STATIC[p]; const buf=fs.readFileSync(path.join(__dirname,"public",f)); res.writeHead(200,{"Content-Type":ct,"Cache-Control":"no-cache"}); return res.end(buf); }catch{ res.writeHead(404); return res.end(); } }
+
+  // Push-Subscription speichern (für Benachrichtigungen)
+  if(req.method==="POST" && p==="/subscribe"){ const b=await body(req); if(b.number&&b.subscription) pushSubs.set(b.number,b.subscription); return send(res,200,{ok:true}); }
 
   if(req.method==="POST" && p==="/register"){ const b=await body(req);
     if(!b.signPub||!b.kexPub) return send(res,400,{error:"keys missing"});
@@ -90,6 +118,7 @@ const server = http.createServer(async (req,res)=>{
     if(b.from) lastSeen.set(b.from,Date.now());
     if(!directory.has(b.to)) return send(res,404,{error:"unknown recipient"});
     const q=mailbox.get(b.to)||[]; q.push({from:b.from,envelope:b.envelope,ts:Number(b.ts)||Date.now()}); mailbox.set(b.to,q);
+    pushTo(b.to);   // Benachrichtigung ans Zielgerät (neutral, ohne Inhalt)
     return send(res,200,{queued:true}); }
 
   if(req.method==="POST" && p==="/fetch"){ const b=await body(req);

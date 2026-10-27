@@ -1,6 +1,13 @@
 <!doctype html><html lang="de"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>stilla</title>
+<meta name="theme-color" content="#10151e">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="stilla">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js"></script>
 <style>
   :root{--bg:#10151e;--surface:#172030;--s2:#1e2a3a;--line:#2a3647;--fg:#e8eef3;--muted:#8798a8;--accent:#7cc3bb;--on:#07201d;--bad:#e68a8a;color-scheme:dark}
@@ -442,6 +449,10 @@
       <p class="sub" style="font-size:.74rem;margin:4px 2px 0">Aus = du sendest keine blauen Haken und siehst auch keine der anderen.</p>
       <label class="switch"><span>Gelesene Nachrichten nach 24 h löschen</span><input type="checkbox" id="optAutodel"><span class="sw"></span></label>
       <p class="sub" style="font-size:.74rem;margin:6px 2px 0">Screenshot-Warnungen kommen mit der nativen App – im Browser technisch nicht möglich.</p>
+
+      <div class="setlbl">BENACHRICHTIGUNGEN</div>
+      <button class="ghost" id="notifBtn">Benachrichtigungen aktivieren</button>
+      <p class="sub" id="notifHint" style="font-size:.74rem;margin:6px 2px 0">Für neue Nachrichten & Freundschaftsanfragen – auch wenn stilla geschlossen ist. Auf dem iPhone zuerst „Zum Home-Bildschirm" hinzufügen.</p>
 
       <div style="margin-top:22px;margin-bottom:10px"><button id="setSave">Speichern</button></div>
     </div>
@@ -1283,6 +1294,7 @@ function startApp(){
   fetchLoop(); poll=setInterval(fetchLoop,2500);
   if(pres)clearInterval(pres);
   refreshPresence(); pres=setInterval(refreshPresence,10000);
+  if(("Notification" in window)&&Notification.permission==="granted")subscribePush();
 }
 
 /* ---------- Einstellungen ---------- */
@@ -1313,7 +1325,7 @@ function openSettings(){
   $("#optAutodel").checked=autodelOn();
   $("#optInvis").checked=invisibleOn();
   markTheme(LS.get("stilla_theme","dunkel"));
-  buildAccents();
+  buildAccents();updateNotifBtn();
   show("settings");
 }
 async function saveSettings(){
@@ -1389,6 +1401,7 @@ document.querySelectorAll("#themePick .opt").forEach(o=>o.onclick=()=>applyTheme
 $("#bgPick").onclick=()=>$("#bgFile").click();
 $("#bgFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];if(f){try{const d=await shrinkImage(f);LS.set("stilla_chatbg",d);applyChatBg();toast("Chat-Hintergrund gesetzt ✓");}catch(err){toast("Bild konnte nicht geladen werden.");}}e.target.value="";};
 $("#bgClear").onclick=()=>{LS.set("stilla_chatbg","");applyChatBg();toast("Hintergrund entfernt");};
+$("#notifBtn").onclick=enableNotifications;
 
 /* Datei/Bild im Chat */
 $("#clipBtn").onclick=()=>$("#chatFile").click();
@@ -1439,7 +1452,33 @@ $("#svPrev").onclick=storyPrev;
 $("#svLike").onclick=storyLike;
 $("#picAv").onclick=openSettings;$("#clipAv").onclick=openSettings;
 
+/* ---------- PWA / Push-Benachrichtigungen ---------- */
+const VAPID_PUBLIC="BBp8lGotK5Uoo2qFmxuTSSiAPq9PfaEKgS67ZjijzkIx0K8d6YgyM-z1kTMAXnv6PAXFBd3zFzTKJp-uj4m6m94";
+function u8FromB64url(s){const pad="=".repeat((4-s.length%4)%4);const b=(s+pad).replace(/-/g,"+").replace(/_/g,"/");const raw=atob(b);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));}
+let swReg=null;
+async function registerSW(){if(!("serviceWorker" in navigator))return;try{swReg=await navigator.serviceWorker.register("/sw.js");}catch(e){}}
+async function subscribePush(){
+  if(!("PushManager" in window)||!me)return false;
+  try{if(!swReg)swReg=await navigator.serviceWorker.ready;
+    let sub=await swReg.pushManager.getSubscription();
+    if(!sub)sub=await swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8FromB64url(VAPID_PUBLIC)});
+    await api("/subscribe","POST",{number:me.number,subscription:sub});return true;
+  }catch(e){return false;}
+}
+async function enableNotifications(){
+  if(!("Notification" in window)){toast("Benachrichtigungen werden hier nicht unterstützt.");return;}
+  if(Notification.permission==="denied"){toast("Im Browser/Handy blockiert – dort erst erlauben.");return;}
+  let perm=Notification.permission;if(perm!=="granted")perm=await Notification.requestPermission();
+  if(perm!=="granted"){updateNotifBtn();return;}
+  const ok=await subscribePush();toast(ok?"Benachrichtigungen aktiv ✓":"Konnte nicht aktivieren.");updateNotifBtn();
+}
+function updateNotifBtn(){const b=$("#notifBtn");if(!b)return;
+  if(!("Notification" in window)){b.textContent="Hier nicht verfügbar";b.disabled=true;return;}
+  b.textContent=(Notification.permission==="granted")?"Benachrichtigungen aktiv ✓":"Benachrichtigungen aktivieren";
+}
+
 /* boot */
+registerSW();
 if(LS.get("stilla_theme","dunkel")==="hell")document.documentElement.setAttribute("data-t","hell");
 {const ac=LS.get("stilla_accent","");if(ac)document.documentElement.style.setProperty("--accent",ac);}
 applyChatBg();

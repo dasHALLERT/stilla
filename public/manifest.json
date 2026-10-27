@@ -1,0 +1,17 @@
+{
+  "name": "stilla",
+  "short_name": "stilla",
+  "description": "Verschlüsselter Messenger – ohne Handynummer, ohne App-Store.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#10151e",
+  "theme_color": "#10151e",
+  "lang": "de",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
