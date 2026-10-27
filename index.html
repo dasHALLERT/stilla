@@ -14,12 +14,14 @@
   :root{
     --bg:#10151e; --surface:#172030; --surface-2:#1e2a3a; --line:#2a3647;
     --fg:#e8eef3; --muted:#8798a8; --accent:#7cc3bb; --on-accent:#07201d; --soft:rgba(124,195,187,.13);
+    --green:#4ad07d; --green-on:#06240f; --green-soft:rgba(74,208,125,.14);
     --font-display:"Fraunces",Georgia,serif; --font-body:"Hanken Grotesk",system-ui,sans-serif; --font-mono:"Spline Sans Mono",ui-monospace,monospace;
     color-scheme:dark;
   }
   *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
   body{background:var(--bg);color:var(--fg);font-family:var(--font-body);line-height:1.6;margin:0;
-    background-image:radial-gradient(1100px 560px at 82% -12%,rgba(124,195,187,.1),transparent 60%);}
+    background-image:radial-gradient(1100px 560px at 82% -12%,rgba(124,195,187,.1),transparent 60%),radial-gradient(900px 520px at 12% 2%,rgba(74,208,125,.09),transparent 60%);}
   .wrap{max-width:860px;margin:0 auto;
     padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));}
   a{color:var(--accent)}
@@ -34,8 +36,9 @@
   h1{font-family:var(--font-display);font-weight:500;font-size:clamp(2rem,6vw,3.1rem);line-height:1.1;margin:0 0 14px;text-wrap:balance}
   header p{color:var(--muted);font-size:1.1rem;max-width:34ch;margin:0 auto 10px}
   .trust{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px}
-  .trust span{font-family:var(--font-mono);font-size:.74rem;color:var(--fg);background:var(--soft);
-    border:1px solid rgba(124,195,187,.28);border-radius:8px;padding:6px 11px}
+  .trust span{font-family:var(--font-mono);font-size:.74rem;color:var(--fg);background:var(--green-soft);
+    border:1px solid rgba(74,208,125,.35);border-radius:8px;padding:6px 11px}
+  .trust span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:7px;vertical-align:middle}
 
   section{padding-block:30px}
   h2{font-family:var(--font-display);font-weight:600;font-size:1.5rem;margin:0 0 6px;text-align:center}
@@ -50,11 +53,14 @@
     section{padding-block:22px}nav{padding-block:16px 8px}
     .how{padding:20px 18px}.testcta{padding:15px 24px;font-size:.98rem}
   }
-  .testcta{display:inline-flex;align-items:center;gap:11px;margin-top:24px;padding:16px 30px;border-radius:999px;background:var(--accent);color:var(--on-accent);font-family:var(--font-mono);font-weight:600;font-size:1.02rem;letter-spacing:.01em;text-decoration:none;cursor:pointer;animation:ctapulse 1.7s ease-out infinite}
-  .testcta .dot{width:10px;height:10px;border-radius:50%;background:var(--on-accent);animation:ctablink 1s steps(1,end) infinite}
+  .testcta{display:inline-flex;align-items:center;gap:11px;margin-top:24px;padding:16px 34px;border-radius:999px;background:var(--green);color:var(--green-on);font-family:var(--font-mono);font-weight:700;font-size:1.05rem;letter-spacing:.01em;text-decoration:none;cursor:pointer;animation:ctapulse 1.7s ease-out infinite}
+  .testcta .dot{width:10px;height:10px;border-radius:50%;background:var(--green-on);animation:ctablink 1s steps(1,end) infinite}
   .testcta:hover{filter:brightness(1.06)}
   .cta-note{color:var(--muted);font-size:.84rem;margin-top:10px;font-family:var(--font-mono)}
-  @keyframes ctapulse{0%{box-shadow:0 0 0 0 rgba(124,195,187,.55)}70%{box-shadow:0 0 0 18px rgba(124,195,187,0)}100%{box-shadow:0 0 0 0 rgba(124,195,187,0)}}
+  /* kleiner Test-Link oben in der Leiste */
+  .navtest{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:.72rem;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+  .navtest:hover{border-color:var(--accent)}
+  @keyframes ctapulse{0%{box-shadow:0 0 0 0 rgba(74,208,125,.55)}70%{box-shadow:0 0 0 18px rgba(74,208,125,0)}100%{box-shadow:0 0 0 0 rgba(74,208,125,0)}}
   @keyframes ctablink{50%{opacity:.2}}
   @media(prefers-reduced-motion:reduce){.testcta{animation:none}.testcta .dot{animation:none}}
   .dl{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:4px;position:relative}
@@ -63,10 +69,11 @@
   .dl h3{font-family:var(--font-body);font-weight:600;font-size:1.05rem;margin:0}
   .dl .plat{font-family:var(--font-mono);font-size:.68rem;color:var(--muted);letter-spacing:.04em}
   .dl[data-plat]{cursor:pointer;transition:border-color .15s,transform .1s}
-  .dl[data-plat]:hover{border-color:var(--accent)}
+  .dl[data-plat]:hover{border-color:var(--green)}
   .dl[data-plat]:active{transform:scale(.99)}
-  .dl .btn{margin-top:12px;background:var(--accent);border:1px solid var(--accent);color:var(--on-accent);
-    border-radius:10px;padding:10px;text-align:center;font-weight:600;font-size:.86rem;cursor:pointer}
+  .dl .ico{color:var(--green)}
+  .dl .btn{margin-top:12px;background:var(--green);border:1px solid var(--green);color:var(--green-on);
+    border-radius:10px;padding:10px;text-align:center;font-weight:700;font-size:.86rem;cursor:pointer}
   /* Installations-Anleitung (Overlay) */
   .imodal{position:fixed;inset:0;z-index:50;background:rgba(5,8,12,.78);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px}
   .imodal[hidden]{display:none}
@@ -104,7 +111,7 @@
   <nav>
     <svg width="26" height="26" viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#n)" stroke="#2a3647" stroke-width="1.5"/><g fill="#7cc3bb"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></svg>
     <span class="word">stilla</span>
-    <span class="dom">getstilla.me</span>
+    <a class="navtest" href="https://stilla-h5v4.onrender.com" target="_blank" rel="noopener">App testen ↗</a>
   </nav>
 
   <header>
@@ -118,11 +125,11 @@
       <span>ohne Telefonnummer</span>
       <span>quelloffen</span>
     </div>
-    <a class="testcta" href="https://stilla-h5v4.onrender.com" target="_blank" rel="noopener"><span class="dot"></span>App jetzt testen</a>
-    <p class="cta-note">Läuft direkt im Browser · Test-Version, keine Installation nötig</p>
+    <a class="testcta" href="#install"><span class="dot"></span>stilla installieren</a>
+    <p class="cta-note">In ~20 Sekunden als App aufs Handy — ohne App-Store</p>
   </header>
 
-  <section>
+  <section id="install">
     <h2>Installieren</h2>
     <p class="lead">stilla läuft direkt als App auf deinem Gerät — ohne App-Store. Wähle dein Gerät, du bekommst eine kurze Anleitung.</p>
     <div class="downloads downloads-3">
