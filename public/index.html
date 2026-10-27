@@ -189,8 +189,10 @@
   .compcount{text-align:right;font-size:.72rem;color:var(--muted);margin-top:-4px}
   .composer button:disabled{opacity:.5;cursor:default}
   /* Teilen-Button im Popup */
-  .pvshare{margin-left:auto;background:none;border:none;color:#fff;cursor:pointer;padding:6px;width:auto}
-  .pvshare svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .pvshare{margin-left:auto;background:none;border:none;cursor:pointer;padding:6px 8px;width:auto;display:flex;align-items:center}
+  .pvshare svg{width:25px;height:25px;fill:var(--accent);stroke:none}
+  .pvshare:active{transform:scale(.92)}
+  .pvclose{background:none;border:none;color:#fff;cursor:pointer;font-size:1.4rem;line-height:1;width:auto;padding:4px 6px 4px 2px}
   /* Teilen-Sheet */
   .sharesheet{position:absolute;inset:0;z-index:64;background:rgba(5,8,12,.6);display:none;align-items:flex-end;justify-content:center}
   .sharesheet.on{display:flex}
@@ -402,7 +404,7 @@
   </div>
 
   <div class="lightbox" id="lightbox"><button class="x" data-lbclose>✕</button><img id="lbImg" alt="" style="display:none"><video id="lbVid" controls playsinline style="display:none"></video></div>
-  <div class="postview" id="postview"><button class="x" data-pvclose>✕</button><div class="pvcard" id="pvCard"></div></div>
+  <div class="postview" id="postview"><div class="pvcard" id="pvCard"></div></div>
   <div class="composer" id="composer">
     <div class="compcard">
       <div class="comphead"><span id="compHeadTitle">Teilen</span><button class="x" id="compX">✕</button></div>
@@ -922,8 +924,10 @@ function openPost(medium,id){
   const hi=document.createElement("div");hi.innerHTML=`<div class="pn">${esc(who)}</div><div class="pt">${timeAgo(post.ts)}</div>`;
   head.appendChild(av);head.appendChild(hi);
   const sh=document.createElement("button");sh.className="pvshare";sh.setAttribute("aria-label","Teilen");
-  sh.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M12 16V3"/><path d="M7 8l5-5 5 5"/></svg>';
-  sh.onclick=()=>openShare(medium,post);head.appendChild(sh);
+  sh.innerHTML='<svg viewBox="0 0 24 24"><path d="M3.4 6.2L12 19 20.6 6.2a.6.6 0 00-.72-.9L12 8.9 4.12 5.3a.6.6 0 00-.72.9z"/></svg>';
+  sh.onclick=()=>openShare(medium,post);
+  const cl=document.createElement("button");cl.className="pvclose";cl.setAttribute("aria-label","Schließen");cl.innerHTML="✕";cl.onclick=closePost;
+  head.appendChild(sh);head.appendChild(cl);
   const media=document.createElement("div");media.className="pvmedia";
   if(medium==="pic"){const img=document.createElement("img");img.src=post.data;media.appendChild(img);}
   else{const v=document.createElement("video");v.src=post.data;v.controls=true;v.playsInline=true;v.autoplay=true;media.appendChild(v);}
