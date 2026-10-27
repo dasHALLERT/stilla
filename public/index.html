@@ -289,8 +289,8 @@
       <p class="sub" style="font-size:.74rem;margin:6px 2px 0">Screenshot-Warnungen kommen mit der nativen App – im Browser technisch nicht möglich.</p>
 
       <div style="margin-top:22px"><button id="setSave">Speichern</button></div>
-      <div class="card" style="margin-top:14px">
-        <div class="sub">Deine Nummer</div>
+      <div class="card" id="setNumCard" style="margin-top:14px;cursor:pointer">
+        <div class="sub">Deine Nummer · zum Kopieren tippen</div>
         <div class="mynum" id="setMyNum" style="font-size:1.25rem;margin-top:6px">—</div>
       </div>
     </div>
@@ -830,6 +830,7 @@ function toggleEmoji(){buildEmojis();const on=$("#emojibar").classList.toggle("o
 $("#emojiBtn").onclick=toggleEmoji;
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheets);
 $("#copyNum").onclick=async()=>{try{await navigator.clipboard.writeText(me.number);toast("Nummer kopiert ✓");}catch{toast("Deine Nummer: "+fmt(me.number));}};
+$("#setNumCard").onclick=async()=>{try{await navigator.clipboard.writeText(me.number);toast("Nummer kopiert ✓");}catch{toast("Deine Nummer: "+fmt(me.number));}};
 
 /* Einstellungen */
 $("#settingsBtn").onclick=openSettings;
