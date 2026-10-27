@@ -37,6 +37,13 @@
 
   .downloads{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
   @media(max-width:560px){.downloads{grid-template-columns:1fr}}
+  .testcta{display:inline-flex;align-items:center;gap:11px;margin-top:24px;padding:16px 30px;border-radius:999px;background:var(--accent);color:var(--on-accent);font-family:var(--font-mono);font-weight:600;font-size:1.02rem;letter-spacing:.01em;text-decoration:none;cursor:pointer;animation:ctapulse 1.7s ease-out infinite}
+  .testcta .dot{width:10px;height:10px;border-radius:50%;background:var(--on-accent);animation:ctablink 1s steps(1,end) infinite}
+  .testcta:hover{filter:brightness(1.06)}
+  .cta-note{color:var(--muted);font-size:.84rem;margin-top:10px;font-family:var(--font-mono)}
+  @keyframes ctapulse{0%{box-shadow:0 0 0 0 rgba(124,195,187,.55)}70%{box-shadow:0 0 0 18px rgba(124,195,187,0)}100%{box-shadow:0 0 0 0 rgba(124,195,187,0)}}
+  @keyframes ctablink{50%{opacity:.2}}
+  @media(prefers-reduced-motion:reduce){.testcta{animation:none}.testcta .dot{animation:none}}
   .dl{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:4px;position:relative}
   .dl .ico{width:40px;height:40px;margin-bottom:8px;color:var(--accent)}
   .dl .ico svg{width:100%;height:100%;fill:currentColor}
@@ -72,7 +79,7 @@
   <nav>
     <svg width="26" height="26" viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#n)" stroke="#2a3647" stroke-width="1.5"/><g fill="#7cc3bb"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></svg>
     <span class="word">stilla</span>
-    <span class="dom">stilla.me</span>
+    <span class="dom">getstilla.me</span>
   </nav>
 
   <header>
@@ -86,6 +93,8 @@
       <span>ohne Telefonnummer</span>
       <span>quelloffen</span>
     </div>
+    <a class="testcta" href="https://stilla-h5v4.onrender.com" target="_blank" rel="noopener"><span class="dot"></span>App jetzt testen</a>
+    <p class="cta-note">Läuft direkt im Browser · Test-Version, keine Installation nötig</p>
   </header>
 
   <section>
@@ -148,6 +157,6 @@
 
   <footer>
     <p class="note">stilla ist im Aufbau. Diese Seite zeigt, wohin die Reise geht — die Apps folgen, eine nach der anderen. Keine echten Geheimnisse in Testversionen.</p>
-    <p>stilla.me · ein unabhängiges Projekt</p>
+    <p>getstilla.me · ein unabhängiges Projekt</p>
   </footer>
 </div>
