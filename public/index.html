@@ -100,6 +100,39 @@
   .themepick{display:flex;gap:10px}
   .themepick .opt{flex:1;border:1px solid var(--line);border-radius:11px;padding:12px;text-align:center;cursor:pointer;font-size:.84rem;background:var(--s2)}
   .themepick .opt.sel{border-color:var(--accent);color:var(--accent);font-weight:600}
+
+  /* untere Reiter-Leiste */
+  .tabbar{flex:none;display:flex;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);background:var(--bg)}
+  .tabbar button{background:none;border:none;flex:1;padding:9px 0 7px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:var(--muted);border-radius:0}
+  .tabbar button .tn{font-family:ui-monospace,monospace;font-size:.68rem;letter-spacing:.08em;font-weight:600}
+  .tabbar button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tabbar button.sel{color:var(--accent)}
+
+  /* Stories-Leiste */
+  .stories{flex:none;display:flex;gap:12px;overflow-x:auto;padding:12px 2px 10px;border-bottom:1px solid var(--line)}
+  .stories::-webkit-scrollbar{display:none}
+  .story{flex:none;width:62px;text-align:center;cursor:pointer}
+  .story .ring{width:58px;height:58px;border-radius:50%;padding:2px;background:conic-gradient(from 200deg,var(--accent),#9fd8d0,var(--accent));display:flex;align-items:center;justify-content:center;position:relative}
+  .story.seen .ring,.story.mine .ring{background:var(--line)}
+  .story .ring .av{width:100%;height:100%;border:2px solid var(--bg)}
+  .story .lbl{font-size:.66rem;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .story .plus{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--on);font-size:.85rem;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+
+  /* Feed (P1CZ / CL1PZ) */
+  .feed{flex:1;min-height:0;overflow-y:auto;padding-bottom:16px}
+  .post{background:var(--surface);border:1px solid var(--line);border-radius:16px;margin:12px 0;overflow:hidden}
+  .post .ph{display:flex;align-items:center;gap:10px;padding:10px 12px}
+  .post .ph .av{width:34px;height:34px}
+  .post .ph .pn{font-weight:600;font-size:.9rem}
+  .post .ph .pt{font-size:.7rem;color:var(--muted)}
+  .post .media img{width:100%;display:block;cursor:pointer}
+  .post .media video{width:100%;display:block;background:#000}
+  .post .act{display:flex;align-items:center;gap:8px;padding:9px 12px;flex-wrap:wrap}
+  .post .react{background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:1rem;cursor:pointer;width:auto;line-height:1}
+  .post .react:hover{border-color:var(--accent)}
+  .post .likeinfo{font-size:.78rem;color:var(--muted);margin-left:auto}
+  .post .cap{padding:0 12px 12px;font-size:.9rem}
+  .feed .empty b{color:var(--fg)}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute"><symbol id="mark" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#g)" stroke="#2a3647" stroke-width="1.5"/><g fill="#7cc3bb"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></symbol></svg>
 
@@ -126,8 +159,54 @@
         <button class="ic" id="settingsBtn" aria-label="Einstellungen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 00-1.7-1l-.3-2.5H9.4l-.3 2.5a7 7 0 00-1.7 1l-2.3-1-2 3.4 2 1.5a7 7 0 000 2l-2 1.5 2 3.4 2.3-1a7 7 0 001.7 1l.3 2.5h4.2l.3-2.5a7 7 0 001.7-1l2.3 1 2-3.4-2-1.5a7 7 0 00.1-1z"/></svg></button>
       </div>
     </div>
+    <div class="stories" id="stHome"></div>
     <div class="scroll" id="contacts"></div>
     <button class="fab" id="fab" aria-label="hinzufügen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <div class="tabbar" data-tabs>
+      <button data-go="home"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.9 7.6L3 21l1.9-6.1A8.4 8.4 0 1121 11.5z"/></svg><span class="tn">CH4TZ</span></button>
+      <button data-go="pic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.6"/><path d="M4 16l4.5-4 4 3.5L16 12l4 4.5"/></svg><span class="tn">P1CZ</span></button>
+      <button data-go="clip"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M10 9l5 3-5 3z"/></svg><span class="tn">CL1PZ</span></button>
+    </div>
+  </div>
+
+  <!-- P1CZ (Bilder) -->
+  <div class="view" id="pic">
+    <div class="hdr">
+      <span class="logo"><svg><use href="#mark"/></svg></span>
+      <span class="t" style="font-family:ui-monospace,monospace;letter-spacing:.08em;font-size:1rem">P1CZ</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div class="av hav" id="picAv" role="button" title="Einstellungen">?</div>
+      </div>
+    </div>
+    <div class="stories" id="stPic"></div>
+    <div class="feed" id="feedPic"></div>
+    <button class="fab" id="fabPic" aria-label="Bild posten"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <div class="tabbar" data-tabs>
+      <button data-go="home"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.9 7.6L3 21l1.9-6.1A8.4 8.4 0 1121 11.5z"/></svg><span class="tn">CH4TZ</span></button>
+      <button data-go="pic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.6"/><path d="M4 16l4.5-4 4 3.5L16 12l4 4.5"/></svg><span class="tn">P1CZ</span></button>
+      <button data-go="clip"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M10 9l5 3-5 3z"/></svg><span class="tn">CL1PZ</span></button>
+    </div>
+    <input type="file" id="picFile" accept="image/*" style="display:none">
+  </div>
+
+  <!-- CL1PZ (Clips/Videos) -->
+  <div class="view" id="clip">
+    <div class="hdr">
+      <span class="logo"><svg><use href="#mark"/></svg></span>
+      <span class="t" style="font-family:ui-monospace,monospace;letter-spacing:.08em;font-size:1rem">CL1PZ</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div class="av hav" id="clipAv" role="button" title="Einstellungen">?</div>
+      </div>
+    </div>
+    <div class="stories" id="stClip"></div>
+    <div class="feed" id="feedClip"></div>
+    <button class="fab" id="fabClip" aria-label="Clip posten"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <div class="tabbar" data-tabs>
+      <button data-go="home"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.9 7.6L3 21l1.9-6.1A8.4 8.4 0 1121 11.5z"/></svg><span class="tn">CH4TZ</span></button>
+      <button data-go="pic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.6"/><path d="M4 16l4.5-4 4 3.5L16 12l4 4.5"/></svg><span class="tn">P1CZ</span></button>
+      <button data-go="clip"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M10 9l5 3-5 3z"/></svg><span class="tn">CL1PZ</span></button>
+    </div>
+    <input type="file" id="clipFile" accept="video/*" style="display:none">
   </div>
 
   <!-- CHAT -->
@@ -195,7 +274,8 @@
     </div>
   </div>
 
-  <div class="lightbox" id="lightbox"><button class="x" data-lbclose>✕</button><img id="lbImg" alt=""></div>
+  <div class="lightbox" id="lightbox"><button class="x" data-lbclose>✕</button><img id="lbImg" alt="" style="display:none"><video id="lbVid" controls playsinline style="display:none"></video></div>
+  <input type="file" id="storyFile" accept="image/*" style="display:none">
   <div class="toast" id="toast"></div>
 </div>
 
@@ -320,7 +400,7 @@ function renderThread(n){
     const a=m.att;
     if(a&&a.kind==="img"){
       const img=document.createElement("img");img.className="bubimg";img.src=a.data;img.alt=a.name||"Bild";
-      img.onclick=()=>{$("#lbImg").src=a.data;$("#lightbox").classList.add("on");};
+      img.onclick=()=>openLightbox("img",a.data);
       d.appendChild(img);
       if(m.text){const c=document.createElement("div");c.className="cap";c.textContent=m.text;d.appendChild(c);}
     }else if(a&&a.kind==="file"){
@@ -367,7 +447,8 @@ async function sendMsg(){
   const t=$("#msg").value.trim();if(!t||!peer)return;$("#msg").value="";
   deliver(t,null);
 }
-const MAX_FILE=3*1024*1024;   // 3 MB Rohdaten (Testlimit)
+const MAX_FILE=3*1024*1024;    // 3 MB Rohdaten (Testlimit)
+const MAX_VIDEO=8*1024*1024;   // 8 MB für kurze Clips (Testlimit)
 async function sendFiles(files){
   if(!peer||!files||!files.length)return;
   for(const f of Array.from(files)){
@@ -384,16 +465,36 @@ async function sendFiles(files){
   }
 }
 
+function openLightbox(kind,data){
+  const im=$("#lbImg"),vd=$("#lbVid");
+  if(kind==="img"){im.src=data;im.style.display="";vd.style.display="none";try{vd.pause();}catch{}}
+  else{vd.src=data;vd.style.display="";im.style.display="none";}
+  $("#lightbox").classList.add("on");
+}
+function closeLightbox(){const vd=$("#lbVid");try{vd.pause();vd.removeAttribute("src");vd.load();}catch{}$("#lightbox").classList.remove("on");}
+
 async function fetchLoop(){
   if(!me)return;
   let r; try{r=await api("/fetch","POST",{number:me.number});}catch{return;}
   const msgs=(r&&r.messages)||[];if(!msgs.length)return;
-  const u=unread();let changed=false,openPeerTouched=false;
+  const u=unread();let changed=false,openPeerTouched=false,storiesTouched=false;const feedTouched={};
   for(const m of msgs){
     const from=m.from;if(!from)continue;
-    const p=await resolvePeer(from); if(!p||!p.kexPub) continue;
-    const raw=decrypt(p.kexPub,m.envelope); if(raw==null) continue;
+    // Absenderschlüssel: für Chat/Reaktion nötig; Beiträge/Stories tragen Daten selbst
+    let p=await resolvePeer(from);
+    const raw=(p&&p.kexPub)?decrypt(p.kexPub,m.envelope):null;
+    if(raw==null) continue;
     const {text,att}=unpackMsg(raw);
+
+    if(att&&att.kind==="post"){ addPostLocal(att.medium,{id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,medium:att.medium,mime:att.mime,data:att.data,text:att.text||"",ts:att.ts||m.ts||Date.now(),likes:{}}); feedTouched[att.medium]=true; continue; }
+    if(att&&att.kind==="story"){ const a2=storiesAll(); if(!a2.some(s=>s.id===att.id)){a2.unshift({id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,data:att.data,ts:att.ts||m.ts||Date.now()}); saveStories(a2); storiesTouched=true;} continue; }
+    if(att&&att.kind==="reaction"){
+      const f=feedOf(att.medium);const it=f.find(x=>x.id===att.postId); if(it){it.likes=it.likes||{};it.likes[from]=att.emoji;saveFeed(att.medium,f);feedTouched[att.medium]=true;}
+      const txt=att.emoji+" hat auf deinen "+(att.medium==="pic"?"Beitrag":"Clip")+" reagiert";
+      const lg2=logOf(from); if(!lg2.some(x=>x.ts===(att.ts||m.ts)&&x.from===from)){lg2.push({from,text:txt,att:null,ts:att.ts||m.ts||Date.now()});saveLog(from,lg2);changed=true;if(peer&&peer.number===from)openPeerTouched=true;else u[from]=(u[from]||0)+1;}
+      continue;
+    }
+
     const lg=logOf(from);
     if(lg.some(x=>x.ts===m.ts&&x.from===from)) continue; // Dublette
     lg.push({from,text,att,ts:m.ts||Date.now()});saveLog(from,lg);changed=true;
@@ -401,11 +502,120 @@ async function fetchLoop(){
     else{u[from]=(u[from]||0)+1;}
   }
   if(changed){saveUnread(u); if($("#home").classList.contains("on"))renderContacts(); if(openPeerTouched&&peer)renderThread(peer.number);}
+  if(storiesTouched)renderStories();
+  if(feedTouched.pic&&$("#pic").classList.contains("on"))renderFeed("pic");
+  if(feedTouched.clip&&$("#clip").classList.contains("on"))renderFeed("clip");
+}
+
+/* ---------- P1CZ / CL1PZ (Beiträge) & Stories ---------- */
+const STORY_TTL=24*3600*1000;
+const REACTS=["❤️","🔥","😂","👍","😮","😢"];
+const feedKey=m=>"stilla_feed_"+m;
+const feedOf=m=>LS.get(feedKey(m),[]);
+const saveFeed=(m,a)=>LS.set(feedKey(m),a);
+const storiesAll=()=>{const a=LS.get("stilla_stories",[]);const now=Date.now();const keep=a.filter(s=>now-s.ts<STORY_TTL);if(keep.length!==a.length)saveStories(keep);return keep;};
+const saveStories=a=>LS.set("stilla_stories",a);
+function addPostLocal(m,post){const f=feedOf(m);if(f.some(x=>x.id===post.id))return;f.unshift(post);saveFeed(m,f.slice(0,200));}
+function timeAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return"gerade eben";if(s<3600)return Math.floor(s/60)+" Min.";if(s<86400)return Math.floor(s/3600)+" Std.";return Math.floor(s/86400)+" Tg.";}
+
+async function fanout(att){
+  const c=contacts();const nums=Object.keys(c);
+  for(const n of nums){const p=c[n];if(!p||!p.kexPub)continue;
+    try{const env=encrypt(p.kexPub,packMsg("",att));await api("/send","POST",{to:n,from:me.number,envelope:env,ts:att.ts});}catch{}}
+  return nums.length;
+}
+
+async function postMedia(medium,file){
+  try{
+    let data;
+    if(medium==="pic"){data=await shrinkImage(file);}
+    else{if(file.size>MAX_VIDEO){toast("Clip ist zu groß (max "+fmtSize(MAX_VIDEO)+" im Test).");return;}data=await fileToDataURL(file);}
+    const ts=Date.now();const id=me.number+"-"+ts+"-"+Math.random().toString(36).slice(2,7);
+    const mime=medium==="pic"?"image/jpeg":(file.type||"video/mp4");
+    addPostLocal(medium,{id,owner:me.number,name:me.name,avatar:me.avatar||"",medium,mime,data,ts,likes:{}});
+    renderFeed(medium);
+    const n=await fanout({kind:"post",medium,id,owner:me.number,name:me.name,avatar:me.avatar||"",mime,data,ts});
+    toast(n?("Geteilt mit "+n+(n===1?" Kontakt":" Kontakten")):"Noch keine Kontakte — füge jemanden hinzu.");
+  }catch(e){toast((e&&e.message)||"Konnte nicht posten.");}
+}
+
+async function reactTo(medium,post,emoji){
+  const f=feedOf(medium);const it=f.find(x=>x.id===post.id);
+  if(it){it.likes=it.likes||{};it.likes[me.number]=emoji;saveFeed(medium,f);renderFeed(medium);}
+  if(post.owner===me.number){toast("Dein eigener Beitrag 🙂");return;}
+  const att={kind:"reaction",medium,postId:post.id,emoji,name:me.name,ts:Date.now()};
+  const p=await resolvePeer(post.owner);
+  if(p&&p.kexPub){try{const env=encrypt(p.kexPub,packMsg("",att));await api("/send","POST",{to:post.owner,from:me.number,envelope:env,ts:att.ts});}catch{}}
+  toast("Reaktion gesendet "+emoji);
+}
+
+function renderFeed(medium){
+  const box=$("#feed"+(medium==="pic"?"Pic":"Clip"));if(!box)return;box.innerHTML="";
+  const f=feedOf(medium);
+  if(!f.length){box.innerHTML='<div class="empty">Noch nichts hier.<br>Tipp auf <b>+</b> und teile '+(medium==="pic"?"ein Bild":"einen Clip")+' – nur deine Kontakte sehen es.</div>';return;}
+  f.forEach(post=>{
+    const el=document.createElement("div");el.className="post";
+    const head=document.createElement("div");head.className="ph";
+    const av=document.createElement("div");av.className="av";setAv(av,post);
+    const who=(post.owner===me.number)?"Du":(post.name||("Nummer "+fmt(post.owner)));
+    const hi=document.createElement("div");hi.innerHTML=`<div class="pn">${esc(who)}</div><div class="pt">${timeAgo(post.ts)}</div>`;
+    head.appendChild(av);head.appendChild(hi);
+    const media=document.createElement("div");media.className="media";
+    if(medium==="pic"){const img=document.createElement("img");img.src=post.data;img.onclick=()=>openLightbox("img",post.data);media.appendChild(img);}
+    else{const v=document.createElement("video");v.src=post.data;v.controls=true;v.playsInline=true;media.appendChild(v);}
+    const act=document.createElement("div");act.className="act";
+    REACTS.forEach(em=>{const b=document.createElement("button");b.className="react";b.textContent=em;b.onclick=()=>reactTo(medium,post,em);act.appendChild(b);});
+    const likes=post.likes||{};const cnt=Object.keys(likes).length;
+    const info=document.createElement("span");info.className="likeinfo";
+    if(cnt){info.textContent=[...new Set(Object.values(likes))].slice(0,4).join("")+" "+cnt;}
+    act.appendChild(info);
+    el.appendChild(head);el.appendChild(media);el.appendChild(act);
+    if(post.text){const c=document.createElement("div");c.className="cap";c.textContent=post.text;el.appendChild(c);}
+    box.appendChild(el);
+  });
+}
+
+async function addStory(file){
+  try{const data=await shrinkImage(file);const ts=Date.now();const id=me.number+"-"+ts;
+    const a=storiesAll();a.unshift({id,owner:me.number,name:me.name,avatar:me.avatar||"",data,ts});saveStories(a);renderStories();
+    const n=await fanout({kind:"story",id,owner:me.number,name:me.name,avatar:me.avatar||"",data,ts});
+    toast(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte.");
+  }catch(e){toast((e&&e.message)||"Story konnte nicht erstellt werden.");}
+}
+function viewStories(owner){const g=storiesAll().filter(s=>s.owner===owner).sort((a,b)=>b.ts-a.ts);if(g.length)openLightbox("img",g[0].data);}
+function renderStories(){
+  const items=storiesAll();const groups={};items.forEach(s=>{(groups[s.owner]=groups[s.owner]||[]).push(s);});
+  document.querySelectorAll(".stories").forEach(strip=>{
+    strip.innerHTML="";
+    const add=document.createElement("div");add.className="story mine";
+    const ring=document.createElement("div");ring.className="ring";const av=document.createElement("div");av.className="av";setAv(av,me);ring.appendChild(av);
+    const plus=document.createElement("div");plus.className="plus";plus.textContent="+";ring.appendChild(plus);
+    add.appendChild(ring);const lbl=document.createElement("div");lbl.className="lbl";lbl.textContent="Deine Story";add.appendChild(lbl);
+    add.onclick=()=>{$("#storyFile").click();};
+    strip.appendChild(add);
+    Object.keys(groups).filter(o=>o!==me.number).forEach(o=>{
+      const first=groups[o].slice().sort((a,b)=>b.ts-a.ts)[0];
+      const d=document.createElement("div");d.className="story";
+      const r=document.createElement("div");r.className="ring";const a=document.createElement("div");a.className="av";setAv(a,first);r.appendChild(a);
+      d.appendChild(r);const l=document.createElement("div");l.className="lbl";l.textContent=first.name||("Nr "+fmt(o));d.appendChild(l);
+      d.onclick=()=>viewStories(o);strip.appendChild(d);
+    });
+    // eigene Story zusätzlich ansehbar per Klick aufs Bild, nicht aufs Plus
+    if(groups[me.number]&&groups[me.number].length){ add.querySelector(".av").onclick=e=>{e.stopPropagation();viewStories(me.number);}; }
+  });
+}
+
+function go(v){
+  if(v==="pic"){setAv($("#picAv"),me);renderFeed("pic");}
+  else if(v==="clip"){setAv($("#clipAv"),me);renderFeed("clip");}
+  else if(v==="home"){renderContacts();}
+  show(v);renderStories();
+  document.querySelectorAll("[data-tabs]").forEach(bar=>bar.querySelectorAll("button").forEach(b=>b.classList.toggle("sel",b.dataset.go===v)));
 }
 
 function startApp(){
   setAv($("#homeAv"),me);$("#sheetNum").textContent=fmt(me.number);
-  renderContacts();show("home");
+  go("home");
   ensureRegistered();
   if(poll)clearInterval(poll);
   fetchLoop(); poll=setInterval(fetchLoop,2500);
@@ -436,7 +646,7 @@ async function saveSettings(){
   // eigenen Kontakt-Eintrag (falls vorhanden) aktualisieren, damit die Vorschau stimmt
   try{await api("/profile","POST",{number:me.number,name:me.name,avatar:me.avatar||"",status:me.status||""});}catch{}
   toast("Gespeichert ✓");
-  renderContacts();show("home");
+  go("home");
 }
 
 /* ---------- Events ---------- */
@@ -445,7 +655,7 @@ $("#name").addEventListener("keydown",e=>{if(e.key==="Enter")createProfile();});
 $("#fab").onclick=()=>{$("#sheetNum").textContent=fmt(me.number);$("#addsheet").classList.add("on");};
 $("#addBtn").onclick=addByNumber;
 $("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")addByNumber();});
-$("#backBtn").onclick=()=>{peer=null;renderContacts();show("home");};
+$("#backBtn").onclick=()=>{peer=null;go("home");};
 $("#sendBtn").onclick=sendMsg;
 $("#msg").addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg();});
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheets);
@@ -454,7 +664,7 @@ $("#copyNum").onclick=async()=>{try{await navigator.clipboard.writeText(me.numbe
 /* Einstellungen */
 $("#settingsBtn").onclick=openSettings;
 $("#homeAv").onclick=openSettings;
-$("#setBack").onclick=()=>{renderContacts();show("home");};
+$("#setBack").onclick=()=>{go("home");};
 $("#setSave").onclick=saveSettings;
 $("#avEdit").onclick=()=>$("#avFile").click();
 $("#avFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;
@@ -466,8 +676,18 @@ document.querySelectorAll("#themePick .opt").forEach(o=>o.onclick=()=>applyTheme
 /* Datei/Bild im Chat */
 $("#clipBtn").onclick=()=>$("#chatFile").click();
 $("#chatFile").onchange=e=>{sendFiles(e.target.files);e.target.value="";};
-$("#lbImg").onclick=()=>$("#lightbox").classList.remove("on");
-document.querySelectorAll("[data-lbclose]").forEach(b=>b.onclick=()=>$("#lightbox").classList.remove("on"));
+$("#lbImg").onclick=closeLightbox;
+document.querySelectorAll("[data-lbclose]").forEach(b=>b.onclick=closeLightbox);
+$("#lightbox").onclick=e=>{if(e.target.id==="lightbox")closeLightbox();};
+
+/* Reiter P1CZ / CL1PZ + Stories */
+document.querySelectorAll("[data-tabs] button").forEach(b=>b.onclick=()=>go(b.dataset.go));
+$("#fabPic").onclick=()=>$("#picFile").click();
+$("#picFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)postMedia("pic",f);e.target.value="";};
+$("#fabClip").onclick=()=>$("#clipFile").click();
+$("#clipFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)postMedia("clip",f);e.target.value="";};
+$("#storyFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)addStory(f);e.target.value="";};
+$("#picAv").onclick=openSettings;$("#clipAv").onclick=openSettings;
 
 /* boot */
 if(LS.get("stilla_theme","dunkel")==="hell")document.documentElement.setAttribute("data-t","hell");
