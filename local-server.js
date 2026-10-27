@@ -93,7 +93,8 @@ const server = http.createServer(async (req,res)=>{
     return send(res,200,{queued:true}); }
 
   if(req.method==="POST" && p==="/fetch"){ const b=await body(req);
-    if(b.number) lastSeen.set(b.number,Date.now());                  // Lebenszeichen fürs Online-Signal
+    if(b.number && !b.invisible) lastSeen.set(b.number,Date.now());  // Lebenszeichen (nicht bei Unsichtbar)
+    else if(b.number && b.invisible) lastSeen.delete(b.number);      // sofort offline erscheinen
     const q=mailbox.get(b.number)||[]; mailbox.delete(b.number);     // sofort löschen
     return send(res,200,{messages:q}); }
 

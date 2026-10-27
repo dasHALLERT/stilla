@@ -123,6 +123,11 @@
   .themepick{display:flex;gap:10px}
   .themepick .opt{flex:1;border:1px solid var(--line);border-radius:11px;padding:12px;text-align:center;cursor:pointer;font-size:.84rem;background:var(--s2)}
   .themepick .opt.sel{border-color:var(--accent);color:var(--accent);font-weight:600}
+  .swrow{display:flex;flex-wrap:wrap;gap:12px;margin-top:4px}
+  .swatch{width:34px;height:34px;border-radius:50%;cursor:pointer;border:3px solid transparent;padding:0;box-shadow:0 0 0 1px var(--line) inset}
+  .swatch.sel{border-color:var(--fg)}
+  .bgrow{display:flex;gap:10px}
+  .bgrow button{flex:1}
 
   /* untere Reiter-Leiste */
   .tabbar{flex:none;display:flex;border-top:1px solid var(--line);padding-bottom:max(8px,env(safe-area-inset-bottom,0px));background:var(--bg)}
@@ -393,7 +398,7 @@
   <div class="view" id="settings">
     <div class="cvhdr">
       <button class="back" id="setBack">‹</button>
-      <div style="flex:1;min-width:0"><div class="nm">Einstellungen</div><div class="nu" id="setNum"></div></div>
+      <div style="flex:1;min-width:0"><div class="nm">Einstellungen</div></div>
     </div>
     <div class="scroll">
       <div class="bigav">
@@ -405,6 +410,11 @@
       <div class="setlbl">NAME</div>
       <input id="setName" placeholder="Dein Name" maxlength="40" autocomplete="off">
 
+      <div class="card" id="setNumCard" style="margin-top:10px;cursor:pointer;text-align:center">
+        <div class="sub">Deine Nummer · zum Kopieren tippen</div>
+        <div class="mynum" id="setMyNum" style="font-size:1.3rem;margin-top:6px">—</div>
+      </div>
+
       <div class="setlbl">STATUS</div>
       <input id="setStatus" placeholder="Was ist dein Status?" maxlength="60" autocomplete="off">
       <div class="chips" id="statusChips"></div>
@@ -415,17 +425,25 @@
         <div class="opt" data-th="hell">☀️ Hell</div>
       </div>
 
+      <div class="setlbl">AKZENTFARBE</div>
+      <div class="swrow" id="accentRow"></div>
+
+      <div class="setlbl">CHAT-HINTERGRUND</div>
+      <div class="bgrow">
+        <button class="ghost" id="bgPick">Bild wählen</button>
+        <button class="ghost" id="bgClear">Entfernen</button>
+      </div>
+      <input type="file" id="bgFile" accept="image/*" style="display:none">
+
       <div class="setlbl">PRIVATSPHÄRE</div>
+      <label class="switch"><span>Unsichtbar – Online-Status verbergen</span><input type="checkbox" id="optInvis"><span class="sw"></span></label>
+      <p class="sub" style="font-size:.74rem;margin:4px 2px 0">An = niemand sieht, dass du online bist (kein grüner Punkt) – und du siehst den Status der anderen dann auch nicht.</p>
       <label class="switch"><span>Lesebestätigung (blauer Haken)</span><input type="checkbox" id="optReceipts"><span class="sw"></span></label>
       <p class="sub" style="font-size:.74rem;margin:4px 2px 0">Aus = du sendest keine blauen Haken und siehst auch keine der anderen.</p>
       <label class="switch"><span>Gelesene Nachrichten nach 24 h löschen</span><input type="checkbox" id="optAutodel"><span class="sw"></span></label>
       <p class="sub" style="font-size:.74rem;margin:6px 2px 0">Screenshot-Warnungen kommen mit der nativen App – im Browser technisch nicht möglich.</p>
 
-      <div style="margin-top:22px"><button id="setSave">Speichern</button></div>
-      <div class="card" id="setNumCard" style="margin-top:14px;cursor:pointer">
-        <div class="sub">Deine Nummer · zum Kopieren tippen</div>
-        <div class="mynum" id="setMyNum" style="font-size:1.25rem;margin-top:6px">—</div>
-      </div>
+      <div style="margin-top:22px;margin-bottom:10px"><button id="setSave">Speichern</button></div>
     </div>
   </div>
 
@@ -533,6 +551,7 @@ const pins=()=>LS.get("stilla_pins",[]);
 const savePins=a=>LS.set("stilla_pins",a);
 const receiptsOn=()=>LS.get("stilla_receipts",true);
 const autodelOn=()=>LS.get("stilla_autodel",false);
+const invisibleOn=()=>LS.get("stilla_invisible",false);
 const DAY=24*3600*1000;
 const reqin=()=>LS.get("stilla_reqin",{});     // Nummer -> {name,kexPub,avatar,status,text,ts}
 const saveReqin=r=>LS.set("stilla_reqin",r);
@@ -860,7 +879,7 @@ function closeLightbox(){const vd=$("#lbVid");try{vd.pause();vd.removeAttribute(
 
 async function fetchLoop(){
   if(!me)return;
-  let r; try{r=await api("/fetch","POST",{number:me.number});}catch{return;}
+  let r; try{r=await api("/fetch","POST",{number:me.number,invisible:invisibleOn()});}catch{return;}
   const msgs=(r&&r.messages)||[];if(!msgs.length)return;
   const u=unread();let changed=false,openPeerTouched=false,storiesTouched=false,reqTouched=false;const feedTouched={},deliveredTo={},readTo={};
   for(const m of msgs){
@@ -1237,11 +1256,15 @@ function renderPresenceBar(){
   const el=$("#presbar");if(!el)return;
   const nums=Object.keys(contacts());const total=nums.length;
   if(!total){el.style.display="none";return;}
+  el.style.display="";
+  if(invisibleOn()){el.innerHTML="👻 Unsichtbar · "+total+(total===1?" Freund":" Freunde");return;}
   const on=nums.filter(n=>online.has(n)).length;
-  el.style.display="";el.innerHTML="Online <b>"+on+"</b>/"+total+(total===1?" Freund":" Freunde");
+  el.innerHTML="Online <b>"+on+"</b>/"+total+(total===1?" Freund":" Freunde");
 }
 async function refreshPresence(){
   if(!me)return;const nums=Object.keys(contacts());
+  // unsichtbar: Gegenseitigkeit -> ich sehe auch niemanden
+  if(invisibleOn()){if(online.size){online=new Set();if($("#home").classList.contains("on"))renderContacts();}renderPresenceBar();return;}
   if(!nums.length){online=new Set();renderPresenceBar();return;}
   try{const r=await api("/presence?numbers="+encodeURIComponent(nums.join(",")),"GET");
     if(r&&Array.isArray(r.online)){const before=[...online].sort().join(",");online=new Set(r.online);
@@ -1266,18 +1289,31 @@ function startApp(){
 let pendingAvatar=null;   // gewähltes, noch nicht gespeichertes Bild
 function applyTheme(t){ if(t==="hell")document.documentElement.setAttribute("data-t","hell"); else document.documentElement.removeAttribute("data-t"); LS.set("stilla_theme",t); markTheme(t); }
 function markTheme(t){document.querySelectorAll("#themePick .opt").forEach(o=>o.classList.toggle("sel",o.dataset.th===t));}
+
+/* Akzentfarbe */
+const ACCENTS=["#7cc3bb","#6aa6ff","#b89cff","#7bd389","#ff8fb0","#ffcf5c","#ff8a7a","#58d5c9"];
+function applyAccent(hex){document.documentElement.style.setProperty("--accent",hex);LS.set("stilla_accent",hex);document.querySelectorAll("#accentRow .swatch").forEach(s=>s.classList.toggle("sel",s.dataset.c===hex));}
+function buildAccents(){const row=$("#accentRow");row.innerHTML="";const cur=LS.get("stilla_accent",ACCENTS[0]);
+  ACCENTS.forEach(hex=>{const b=document.createElement("button");b.className="swatch"+(hex===cur?" sel":"");b.dataset.c=hex;b.style.background=hex;b.onclick=()=>applyAccent(hex);row.appendChild(b);});}
+
+/* Chat-Hintergrund */
+function applyChatBg(){const bg=LS.get("stilla_chatbg","");const el=$("#chat");if(!el)return;
+  if(bg){el.style.backgroundImage="linear-gradient(rgba(5,8,12,.5),rgba(5,8,12,.5)),url('"+bg+"')";el.style.backgroundSize="cover";el.style.backgroundPosition="center";}
+  else{el.style.backgroundImage="";}}
+
 function openSettings(){
   pendingAvatar=null;
   $("#setName").value=me.name||"";
   $("#setStatus").value=me.status||"";
-  $("#setNum").textContent=fmt(me.number);
   $("#setMyNum").textContent=fmt(me.number);
   setAv($("#setAvImg"),me);
   const chips=$("#statusChips");chips.innerHTML="";
   STATUS_PRESETS.forEach(s=>{const b=document.createElement("button");b.className="chip";b.type="button";b.textContent=s;b.onclick=()=>{$("#setStatus").value=s;};chips.appendChild(b);});
   $("#optReceipts").checked=receiptsOn();
   $("#optAutodel").checked=autodelOn();
+  $("#optInvis").checked=invisibleOn();
   markTheme(LS.get("stilla_theme","dunkel"));
+  buildAccents();
   show("settings");
 }
 async function saveSettings(){
@@ -1287,6 +1323,8 @@ async function saveSettings(){
   LS.set("stilla_me",me);
   LS.set("stilla_receipts",$("#optReceipts").checked);
   LS.set("stilla_autodel",$("#optAutodel").checked);
+  LS.set("stilla_invisible",$("#optInvis").checked);
+  refreshPresence();
   setAv($("#homeAv"),me);
   // eigenen Kontakt-Eintrag (falls vorhanden) aktualisieren, damit die Vorschau stimmt
   try{await api("/profile","POST",{number:me.number,name:me.name,avatar:me.avatar||"",status:me.status||""});}catch{}
@@ -1348,6 +1386,9 @@ $("#avFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)
   catch(err){toast((err&&err.message)||"Bild konnte nicht geladen werden.");}
   e.target.value="";};
 document.querySelectorAll("#themePick .opt").forEach(o=>o.onclick=()=>applyTheme(o.dataset.th));
+$("#bgPick").onclick=()=>$("#bgFile").click();
+$("#bgFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];if(f){try{const d=await shrinkImage(f);LS.set("stilla_chatbg",d);applyChatBg();toast("Chat-Hintergrund gesetzt ✓");}catch(err){toast("Bild konnte nicht geladen werden.");}}e.target.value="";};
+$("#bgClear").onclick=()=>{LS.set("stilla_chatbg","");applyChatBg();toast("Hintergrund entfernt");};
 
 /* Datei/Bild im Chat */
 $("#clipBtn").onclick=()=>$("#chatFile").click();
@@ -1400,6 +1441,8 @@ $("#picAv").onclick=openSettings;$("#clipAv").onclick=openSettings;
 
 /* boot */
 if(LS.get("stilla_theme","dunkel")==="hell")document.documentElement.setAttribute("data-t","hell");
+{const ac=LS.get("stilla_accent","");if(ac)document.documentElement.style.setProperty("--accent",ac);}
+applyChatBg();
 me=LS.get("stilla_me",null);
 if(me&&me.signSec){startApp();}else{show("auth");}
 </script></body></html>
