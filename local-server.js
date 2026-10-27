@@ -48,6 +48,14 @@ const server = http.createServer(async (req,res)=>{
     const number=nextNumber(); directory.set(number,{signPub:b.signPub,kexPub:b.kexPub,name:b.name||"",avatar:b.avatar||"",status:b.status||""});
     return send(res,200,{number}); }
 
+  // Nummer zurueckholen/beanspruchen — ueberlebt Server-Neustart. Eigentuemer = signPub.
+  if(req.method==="POST" && p==="/reclaim"){ const b=await body(req);
+    if(!b.number||!b.signPub||!b.kexPub) return send(res,400,{error:"missing"});
+    const e=directory.get(b.number);
+    if(e && e.signPub!==b.signPub) return send(res,409,{taken:true});   // andere Identitaet haelt die Nummer
+    directory.set(b.number,{signPub:b.signPub,kexPub:b.kexPub,name:b.name||"",avatar:b.avatar||"",status:b.status||""});
+    return send(res,200,{ok:true,number:b.number}); }
+
   // Profil aktualisieren (Name, Avatar, Status) — Testversion ohne Signatur-Zwang
   if(req.method==="POST" && p==="/profile"){ const b=await body(req);
     const e=directory.get(b.number); if(!e) return send(res,404,{error:"unknown number"});
