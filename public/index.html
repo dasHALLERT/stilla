@@ -209,6 +209,38 @@
   .ssrow .sscheck{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none}
   .ssrow.on .sscheck{background:var(--accent);border-color:var(--accent)}
   .bub video.bubvid{max-width:100%;border-radius:11px;display:block;background:#000}
+  /* Freundschaftsanfragen */
+  .requests{flex:none;display:flex;flex-direction:column;gap:8px;padding:8px 0 2px}
+  .reqlbl{font-size:.72rem;color:var(--muted);letter-spacing:.04em;margin:2px 2px 0}
+  .reqcard{background:var(--s2);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:9px}
+  .reqtop{display:flex;align-items:center;gap:10px}
+  .reqtop .av{width:38px;height:38px}
+  .reqtop .rn{flex:1;min-width:0}
+  .reqtop .rn .nm{font-weight:600;font-size:.92rem}
+  .reqtop .rn .nu{font-family:ui-monospace,monospace;font-size:.62rem;color:var(--muted)}
+  .reqtxt{font-size:.86rem;color:var(--fg);background:var(--surface);border-radius:9px;padding:8px 10px}
+  .reqbtns{display:flex;gap:8px}
+  .reqbtns button{padding:9px}
+  .reqbtns .decline{background:none;border:1px solid var(--line);color:var(--muted)}
+  .sheet textarea{width:100%;max-width:100%;background:var(--s2);border:1px solid var(--line);border-radius:11px;padding:11px 14px;color:var(--fg);font-size:.92rem;font-family:inherit;resize:none;min-height:54px}
+  /* Story-Viewer */
+  .storyview{position:absolute;inset:0;z-index:66;background:#000;display:none;flex-direction:column}
+  .storyview.on{display:flex}
+  .svbars{display:flex;gap:4px;padding:10px 12px 4px;z-index:3}
+  .svbars .sb{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.3)}
+  .svbars .sb.done{background:#fff}
+  .svhead{display:flex;align-items:center;gap:10px;padding:4px 14px;color:#fff;z-index:3}
+  .svhead .av{width:32px;height:32px}
+  .svhead .nm{font-weight:600;font-size:.9rem}.svhead .tm{font-size:.7rem;color:#cdd5dd}
+  .svhead .x{margin-left:auto;background:none;border:none;color:#fff;font-size:1.5rem;width:auto;cursor:pointer}
+  .svstage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .svstage img,.svstage video{max-width:100%;max-height:100%;object-fit:contain}
+  .svtitle{position:absolute;top:14px;left:0;right:0;text-align:center;color:#fff;font-weight:600;font-size:1.05rem;text-shadow:0 1px 6px rgba(0,0,0,.75);padding:0 20px;pointer-events:none}
+  .svnav{position:absolute;inset:0;display:flex;z-index:2}
+  .svnav .half{flex:1}
+  .svlike{position:absolute;right:16px;bottom:calc(22px + env(safe-area-inset-bottom,0px));background:rgba(0,0,0,.4);border:none;width:52px;height:52px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:4}
+  .svlike svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:2}
+  .svlike.liked svg{fill:#ff5a7a;stroke:#ff5a7a}
 
   /* Aktionsmenü (Langdruck) */
   #menu{position:absolute;inset:0;z-index:55;background:rgba(5,8,12,.55);display:none;align-items:flex-end;justify-content:center}
@@ -246,7 +278,7 @@
       </div>
     </div>
     <div class="stories" id="stHome"></div>
-    <div class="scroll" id="contacts"></div>
+    <div class="scroll" id="contacts"><div class="requests" id="requests"></div><div id="contactList"></div></div>
     <button class="fab" id="fab" aria-label="hinzufügen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
     <div class="tabbar" data-tabs>
       <button data-go="home"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.9 7.6L3 21l1.9-6.1A8.4 8.4 0 1121 11.5z"/></svg><span class="tn">CH4TZ</span></button>
@@ -364,7 +396,8 @@
       <button class="ghost copybtn" id="copyNum">Nummer kopieren</button>
       <p class="sub" style="margin:8px 0 0">…oder jemanden hinzufügen:</p>
       <input id="peerNum" inputmode="numeric" placeholder="9-stellige Nummer">
-      <button id="addBtn">Chat starten</button>
+      <textarea id="reqText" placeholder="Kurzer Gruß an die Person (optional) – z. B. wer du bist" maxlength="200"></textarea>
+      <button id="addBtn">Als Freund hinzufügen</button>
     </div>
   </div>
 
@@ -390,7 +423,16 @@
       <button id="ssSend" disabled>Senden</button>
     </div>
   </div>
-  <input type="file" id="storyFile" accept="image/*" style="display:none">
+  <input type="file" id="storyFile" accept="image/*" style="display:none" multiple>
+  <div class="storyview" id="storyview">
+    <div class="svbars" id="svBars"></div>
+    <div class="svhead"><div class="av" id="svAv">?</div><div style="flex:1;min-width:0"><div class="nm" id="svName">—</div><div class="tm" id="svTime"></div></div><button class="x" id="svClose">✕</button></div>
+    <div class="svstage" id="svStage">
+      <div class="svtitle" id="svTitle"></div>
+      <div class="svnav"><div class="half" id="svPrev"></div><div class="half" id="svNext"></div></div>
+    </div>
+    <button class="svlike" id="svLike" aria-label="Gefällt mir"><svg viewBox="0 0 24 24"><path d="M12 21s-8-4.8-8-10.5A4.5 4.5 0 0112 7a4.5 4.5 0 018 3.5C20 16.2 12 21 12 21z"/></svg></button>
+  </div>
   <div id="menu"><div class="mcard" id="menuCard"></div></div>
   <div class="toast" id="toast"></div>
 </div>
@@ -418,6 +460,10 @@ const savePins=a=>LS.set("stilla_pins",a);
 const receiptsOn=()=>LS.get("stilla_receipts",true);
 const autodelOn=()=>LS.get("stilla_autodel",false);
 const DAY=24*3600*1000;
+const reqin=()=>LS.get("stilla_reqin",{});     // Nummer -> {name,kexPub,avatar,status,text,ts}
+const saveReqin=r=>LS.set("stilla_reqin",r);
+const reqout=()=>LS.get("stilla_reqout",{});   // Nummer -> {...,ts} (ausstehend)
+const saveReqout=r=>LS.set("stilla_reqout",r);
 
 /* Aktionsmenü + Langdruck */
 let suppressClick=0;
@@ -521,10 +567,18 @@ async function resolvePeer(num){
   try{const k=await api("/keys?number="+num,"GET"); if(k&&!k.error){const c=contacts();c[num]={name:k.name||("Nummer "+fmt(num)),kexPub:k.kexPub,avatar:k.avatar||"",status:k.status||""};saveContacts(c);return c[num];}}catch{}
   return contacts()[num]||null;
 }
+/* Nur Schlüssel holen, NICHT als Kontakt speichern (für Anfragen/Entschlüsseln) */
+async function lookupKeys(num){
+  const c=contacts()[num]; if(c&&c.kexPub) return c;
+  try{const k=await api("/keys?number="+num,"GET"); if(k&&!k.error) return k;}catch{}
+  return null;
+}
+async function sendCtrl(num,kexPub,att){try{const env=encrypt(kexPub,packMsg("",att));await api("/send","POST",{to:num,from:me.number,envelope:env,ts:Date.now()});return true;}catch{return false;}}
 
 function renderContacts(){
-  const box=$("#contacts");const c=contacts();const u=unread();const nums=Object.keys(c);
-  if(!nums.length){box.innerHTML='<div class="empty">Noch keine Chats.<br>Tipp auf <b>+</b>, gib deine Nummer weiter oder füge eine hinzu.</div>';return;}
+  renderRequests();
+  const box=$("#contactList");const c=contacts();const u=unread();const nums=Object.keys(c);
+  if(!nums.length){box.innerHTML='<div class="empty">Noch keine Chats.<br>Tipp auf <b>+</b>, gib deine Nummer weiter oder füge jemanden als Freund hinzu.</div>';return;}
   // angepinnte zuerst, dann nach letzter Nachricht
   const P=pins();
   nums.sort((a,b)=>{const pa=P.includes(a)?1:0,pb=P.includes(b)?1:0;if(pa!==pb)return pb-pa;const la=logOf(a),lb=logOf(b);return ((lb[lb.length-1]||{}).ts||0)-((la[la.length-1]||{}).ts||0);});
@@ -591,12 +645,51 @@ async function openChat(num){
 }
 
 async function addByNumber(){
-  const num=($("#peerNum").value||"").replace(/\D/g,"");
+  const num=($("#peerNum").value||"").replace(/\D/g,"");   // Leerzeichen etc. automatisch raus
   if(num.length!==9){toast("Bitte eine 9-stellige Nummer.");return;}
   if(num===me.number){toast("Das ist deine eigene Nummer. 🙂");return;}
-  const p=await resolvePeer(num);
-  if(!p||!p.kexPub){toast("Diese Nummer ist hier nicht registriert.");return;}
-  $("#peerNum").value="";closeSheets();renderContacts();openChat(num);
+  if(contacts()[num]){toast("Ihr seid schon verbunden.");$("#peerNum").value="";$("#reqText").value="";closeSheets();openChat(num);return;}
+  if(reqout()[num]){toast("Anfrage läuft schon.");return;}
+  if(reqin()[num]){toast(((reqin()[num].name)||"Diese Person")+" hat dir schon eine Anfrage geschickt – nimm sie oben an.");closeSheets();go("home");return;}
+  const k=await lookupKeys(num);
+  if(!k||!k.kexPub){toast("Diese Nummer ist hier nicht registriert.");return;}
+  const text=($("#reqText").value||"").trim().slice(0,200);
+  const ok=await sendCtrl(num,k.kexPub,{kind:"friendreq",name:me.name,kexPub:me.kexPub,avatar:me.avatar||"",status:me.status||"",text});
+  if(!ok){toast("Konnte nicht senden — kurz später erneut.");return;}
+  const ro=reqout();ro[num]={name:k.name||"",kexPub:k.kexPub,avatar:k.avatar||"",status:k.status||"",ts:Date.now()};saveReqout(ro);
+  $("#peerNum").value="";$("#reqText").value="";closeSheets();renderContacts();
+  toast("Freundschaftsanfrage gesendet ✓");
+}
+async function acceptRequest(num){
+  const ri=reqin();const r=ri[num];if(!r)return;
+  const c=contacts();c[num]={name:r.name||("Nummer "+fmt(num)),kexPub:r.kexPub,avatar:r.avatar||"",status:r.status||""};saveContacts(c);
+  delete ri[num];saveReqin(ri);
+  await sendCtrl(num,r.kexPub,{kind:"friendacc",name:me.name,kexPub:me.kexPub,avatar:me.avatar||"",status:me.status||""});
+  renderRequests();renderContacts();toast("Freund hinzugefügt ✓");
+}
+async function declineRequest(num){
+  const ri=reqin();const r=ri[num];delete ri[num];saveReqin(ri);
+  if(r&&r.kexPub) await sendCtrl(num,r.kexPub,{kind:"frienddecline"});
+  renderRequests();toast("Anfrage abgelehnt");
+}
+function renderRequests(){
+  const box=$("#requests");if(!box)return;box.innerHTML="";
+  const ri=reqin();const nums=Object.keys(ri);
+  if(!nums.length)return;
+  const lbl=document.createElement("div");lbl.className="reqlbl";lbl.textContent="FREUNDSCHAFTSANFRAGEN ("+nums.length+")";box.appendChild(lbl);
+  nums.sort((a,b)=>(ri[b].ts||0)-(ri[a].ts||0)).forEach(n=>{const r=ri[n];
+    const card=document.createElement("div");card.className="reqcard";
+    const top=document.createElement("div");top.className="reqtop";
+    const av=document.createElement("div");av.className="av";setAv(av,r);
+    const rn=document.createElement("div");rn.className="rn";rn.innerHTML=`<div class="nm">${esc(r.name||("Nummer "+fmt(n)))}</div><div class="nu">${fmt(n)}</div>`;
+    top.appendChild(av);top.appendChild(rn);card.appendChild(top);
+    if(r.text){const t=document.createElement("div");t.className="reqtxt";t.textContent=r.text;card.appendChild(t);}
+    const btns=document.createElement("div");btns.className="reqbtns";
+    const acc=document.createElement("button");acc.textContent="Annehmen";acc.onclick=()=>acceptRequest(n);
+    const dec=document.createElement("button");dec.className="decline";dec.textContent="Ablehnen";dec.onclick=()=>declineRequest(n);
+    btns.appendChild(acc);btns.appendChild(dec);card.appendChild(btns);
+    box.appendChild(card);
+  });
 }
 
 function closeSheets(){document.querySelectorAll(".sheet").forEach(s=>s.classList.remove("on"));}
@@ -681,21 +774,27 @@ async function fetchLoop(){
   if(!me)return;
   let r; try{r=await api("/fetch","POST",{number:me.number});}catch{return;}
   const msgs=(r&&r.messages)||[];if(!msgs.length)return;
-  const u=unread();let changed=false,openPeerTouched=false,storiesTouched=false;const feedTouched={},deliveredTo={},readTo={};
+  const u=unread();let changed=false,openPeerTouched=false,storiesTouched=false,reqTouched=false;const feedTouched={},deliveredTo={},readTo={};
   for(const m of msgs){
     const from=m.from;if(!from)continue;
-    // Absenderschlüssel: für Chat/Reaktion nötig; Beiträge/Stories tragen Daten selbst
-    let p=await resolvePeer(from);
+    // Schlüssel nur holen (nicht als Kontakt speichern) — Entschlüsseln
+    let p=await lookupKeys(from);
     const raw=(p&&p.kexPub)?decrypt(p.kexPub,m.envelope):null;
     if(raw==null) continue;
     const {text,att}=unpackMsg(raw);
+
+    // ---- Freundschaftsanfragen ----
+    if(att&&att.kind==="friendreq"){ if(!contacts()[from]){const ri=reqin();ri[from]={name:att.name||"",kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||"",text:att.text||"",ts:att.ts||m.ts||Date.now()};saveReqin(ri);reqTouched=true;} continue; }
+    if(att&&att.kind==="friendacc"){ const c=contacts();c[from]={name:att.name||("Nummer "+fmt(from)),kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||""};saveContacts(c);const ro=reqout();delete ro[from];saveReqout(ro);changed=true; continue; }
+    if(att&&att.kind==="frienddecline"){ const ro=reqout();delete ro[from];saveReqout(ro);changed=true; continue; }
+    if(att&&att.kind==="storylike"){ if(contacts()[from]){const lg2=logOf(from);lg2.push({from,mine:false,text:"❤️ hat auf deine Story reagiert",att:null,ts:att.ts||m.ts||Date.now()});saveLog(from,lg2);changed=true;if(peer&&peer.number===from)openPeerTouched=true;else u[from]=(u[from]||0)+1;} continue; }
 
     if(att&&att.kind==="ack"){ const lg2=logOf(from);let ch=false;
       lg2.forEach(x=>{if(isMine(x)&&x.ts<=att.ref){if(att.t==="delivered"&&(x.st||1)<2){x.st=2;ch=true;}if(att.t==="read"&&(x.st||1)<3){x.st=3;x.readAt=Date.now();ch=true;}}});
       if(ch){saveLog(from,lg2);if(peer&&peer.number===from)renderThread(from);} continue; }
     if(att&&att.kind==="del"){ const lg2=logOf(from).filter(x=>x.ts!==att.ref);saveLog(from,lg2);if(peer&&peer.number===from)renderThread(from);changed=true; continue; }
     if(att&&att.kind==="post"){ addPostLocal(att.medium,{id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,medium:att.medium,mime:att.mime,data:att.data,title:att.title||"",text:att.text||"",ts:att.ts||m.ts||Date.now(),likes:{}}); feedTouched[att.medium]=true; continue; }
-    if(att&&att.kind==="story"){ const a2=storiesAll(); if(!a2.some(s=>s.id===att.id)){a2.unshift({id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,data:att.data,mime:att.mime||"image/jpeg",ts:att.ts||m.ts||Date.now()}); saveStories(a2); storiesTouched=true;} continue; }
+    if(att&&att.kind==="story"){ const a2=storiesAll(); if(!a2.some(s=>s.id===att.id)){a2.unshift({id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,data:att.data,mime:att.mime||"image/jpeg",title:att.title||"",postId:att.postId||"",medium:att.medium||"pic",ts:att.ts||m.ts||Date.now()}); saveStories(a2); storiesTouched=true;} continue; }
     if(att&&att.kind==="reaction"){
       const f=feedOf(att.medium);const it=f.find(x=>x.id===att.postId); if(it){it.likes=it.likes||{};it.likes[from]=att.emoji;saveFeed(att.medium,f);feedTouched[att.medium]=true;}
       const txt=att.emoji+" hat auf deinen "+(att.medium==="pic"?"Beitrag":"Clip")+" reagiert";
@@ -703,6 +802,7 @@ async function fetchLoop(){
       continue;
     }
 
+    if(!contacts()[from]) continue;   // nur Freunde dürfen schreiben
     const lg=logOf(from);
     if(lg.some(x=>x.ts===m.ts&&x.from===from)) continue; // Dublette
     const isOpen=peer&&peer.number===from;
@@ -712,6 +812,7 @@ async function fetchLoop(){
     else{u[from]=(u[from]||0)+1;}
   }
   if(changed){saveUnread(u); if($("#home").classList.contains("on"))renderContacts(); if(openPeerTouched&&peer)renderThread(peer.number);}
+  if(reqTouched){renderRequests();toast("Neue Freundschaftsanfrage");}
   if(storiesTouched)renderStories();
   if(feedTouched.pic&&$("#pic").classList.contains("on"))renderFeed("pic");
   if(feedTouched.clip&&$("#clip").classList.contains("on"))renderFeed("clip");
@@ -753,7 +854,7 @@ async function publishPost(medium,prep,title,text,toStory){
     addPostLocal(medium,{id,owner:me.number,name:me.name,avatar:me.avatar||"",medium,mime:prep.mime,data:prep.data,title:title||"",text:text||"",ts,likes:{}});
     renderFeed(medium);
     const n=await fanout({kind:"post",medium,id,owner:me.number,name:me.name,avatar:me.avatar||"",mime:prep.mime,data:prep.data,title:title||"",text:text||"",ts});
-    if(toStory) await shareStoryData(prep.data,prep.mime);
+    if(toStory) await shareStoryData(prep.data,prep.mime,{title:title||"",postId:id,medium});
     toast(n?("Geteilt mit "+n+(n===1?" Kontakt":" Kontakten")+(toStory?" + Story":"")):"Noch keine Kontakte — füge jemanden hinzu.");
   }catch(e){toast((e&&e.message)||"Konnte nicht posten.");}
 }
@@ -869,24 +970,59 @@ async function doShareSend(){
   const att=(medium==="pic")?{kind:"img",name:post.title||"Bild",mime:post.mime,data:post.data}:{kind:"video",name:post.title||"Clip",mime:post.mime,data:post.data};
   const nums=Object.keys(shareSel);let sent=0;
   for(const n of nums){ if(await sendToNumber(n,"",att))sent++; }
-  if(shareStoryFlag) await shareStoryData(post.data,post.mime);
+  if(shareStoryFlag) await shareStoryData(post.data,post.mime,{title:post.title||"",postId:post.id,medium});
   closeShare();
   if(peer&&shareSel[peer.number])renderThread(peer.number);
   renderContacts();
   toast((sent?("An "+sent+(sent===1?" Kontakt":" Kontakte")+" gesendet"):"")+(shareStoryFlag?((sent?" · ":"")+"zur Story"):"")||"Nichts ausgewählt.");
 }
 
-async function shareStoryData(data,mime){
-  const ts=Date.now();const id=me.number+"-"+ts;
-  const a=storiesAll();a.unshift({id,owner:me.number,name:me.name,avatar:me.avatar||"",data,mime:mime||"image/jpeg",ts});saveStories(a);renderStories();
-  return await fanout({kind:"story",id,owner:me.number,name:me.name,avatar:me.avatar||"",data,mime:mime||"image/jpeg",ts});
+async function shareStoryData(data,mime,opts){
+  opts=opts||{};const ts=Date.now();const id=me.number+"-"+ts+"-"+Math.random().toString(36).slice(2,6);
+  const seg={id,owner:me.number,name:me.name,avatar:me.avatar||"",data,mime:mime||"image/jpeg",title:opts.title||"",postId:opts.postId||"",medium:opts.medium||"pic",ts};
+  const a=storiesAll();a.unshift(seg);saveStories(a);renderStories();
+  return await fanout({kind:"story",...seg});
 }
-async function addStory(file){   // vom Story-"+" (nur Bild)
-  try{const data=await shrinkImage(file);const n=await shareStoryData(data,"image/jpeg");
-    toast(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte.");
-  }catch(e){toast((e&&e.message)||"Story konnte nicht erstellt werden.");}
+async function addStory(files){   // vom Story-"+" — mehrere Bilder möglich
+  const arr=files&&files.length?Array.from(files):[];if(!arr.length)return;let n=0;
+  for(const f of arr){ try{const data=await shrinkImage(f);n=await shareStoryData(data,"image/jpeg");}catch(e){toast((e&&e.message)||"Story konnte nicht erstellt werden.");} }
+  toast(arr.length>1?(arr.length+" Bilder zur Story"+(n?(" · geteilt mit "+n):"")):(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte."));
 }
-function viewStories(owner){const g=storiesAll().filter(s=>s.owner===owner).sort((a,b)=>b.ts-a.ts);if(!g.length)return;const s=g[0];openLightbox((s.mime||"").startsWith("video/")?"vid":"img",s.data);}
+
+/* ---------- Story-Viewer (mehrere Segmente, Titel, Like) ---------- */
+let svSegs=null,svIdx=0;
+function viewStories(owner){
+  const g=storiesAll().filter(s=>s.owner===owner).sort((a,b)=>a.ts-b.ts);   // ältestes zuerst
+  if(!g.length)return;
+  svSegs=g;svIdx=0;showStorySeg();$("#storyview").classList.add("on");
+}
+function showStorySeg(){
+  if(!svSegs||!svSegs[svIdx]){closeStory();return;}
+  const s=svSegs[svIdx];
+  // Fortschrittsbalken
+  const bars=$("#svBars");bars.innerHTML="";svSegs.forEach((x,i)=>{const b=document.createElement("div");b.className="sb"+(i<=svIdx?" done":"");bars.appendChild(b);});
+  setAv($("#svAv"),s);$("#svName").textContent=(s.owner===me.number?"Deine Story":(s.name||("Nummer "+fmt(s.owner))));$("#svTime").textContent=timeAgo(s.ts);
+  $("#svTitle").textContent=s.title||"";
+  const stage=$("#svStage");
+  // altes Medium entfernen (nur img/video, Overlays behalten)
+  stage.querySelectorAll(".svmedia").forEach(e=>e.remove());
+  let el;
+  if((s.mime||"").startsWith("video/")){el=document.createElement("video");el.src=s.data;el.controls=false;el.autoplay=true;el.playsInline=true;el.muted=false;}
+  else{el=document.createElement("img");el.src=s.data;}
+  el.className="svmedia";stage.insertBefore(el,stage.firstChild);
+  // Like-Status
+  const liked=s.postId?!!((feedOf(s.medium).find(p=>p.id===s.postId)||{}).likes||{})[me.number]:false;
+  $("#svLike").classList.toggle("liked",liked);
+}
+function storyNext(){if(!svSegs)return;if(svIdx<svSegs.length-1){svIdx++;showStorySeg();}else closeStory();}
+function storyPrev(){if(!svSegs)return;if(svIdx>0){svIdx--;showStorySeg();}}
+function closeStory(){const v=$("#svStage video");if(v){try{v.pause();}catch{}}$("#storyview").classList.remove("on");svSegs=null;}
+async function storyLike(){
+  if(!svSegs||!svSegs[svIdx])return;const s=svSegs[svIdx];
+  if(s.owner===me.number){toast("Deine eigene Story 🙂");return;}
+  if(s.postId){ await reactTo(s.medium,{id:s.postId,owner:s.owner},"❤️"); $("#svLike").classList.add("liked"); toast("❤️ – wird beim Beitrag übernommen"); }
+  else{ await sendCtrl(s.owner,(contacts()[s.owner]||s).kexPub,{kind:"storylike",ts:Date.now()}); $("#svLike").classList.add("liked"); toast("❤️ gesendet"); }
+}
 function renderStories(){
   const items=storiesAll();const groups={};items.forEach(s=>{(groups[s.owner]=groups[s.owner]||[]).push(s);});
   document.querySelectorAll(".stories").forEach(strip=>{
@@ -1047,7 +1183,12 @@ $("#compX").onclick=closeComposer;
 $("#composer").onclick=e=>{if(e.target.id==="composer")closeComposer();};
 $("#compShare").onclick=doShare;
 $("#compDesc").addEventListener("input",()=>{$("#compCount").textContent=$("#compDesc").value.length;});
-$("#storyFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)addStory(f);e.target.value="";};
+$("#storyFile").onchange=e=>{if(e.target.files&&e.target.files.length)addStory(e.target.files);e.target.value="";};
+/* Story-Viewer */
+$("#svClose").onclick=closeStory;
+$("#svNext").onclick=storyNext;
+$("#svPrev").onclick=storyPrev;
+$("#svLike").onclick=storyLike;
 $("#picAv").onclick=openSettings;$("#clipAv").onclick=openSettings;
 
 /* boot */
