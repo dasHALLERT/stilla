@@ -36,7 +36,8 @@
   .lead{color:var(--muted);text-align:center;max-width:52ch;margin:0 auto 26px}
 
   .downloads{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-  @media(max-width:560px){.downloads{grid-template-columns:1fr}}
+  .downloads-3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:560px){.downloads{grid-template-columns:1fr}.downloads-3{grid-template-columns:1fr}}
   .testcta{display:inline-flex;align-items:center;gap:11px;margin-top:24px;padding:16px 30px;border-radius:999px;background:var(--accent);color:var(--on-accent);font-family:var(--font-mono);font-weight:600;font-size:1.02rem;letter-spacing:.01em;text-decoration:none;cursor:pointer;animation:ctapulse 1.7s ease-out infinite}
   .testcta .dot{width:10px;height:10px;border-radius:50%;background:var(--on-accent);animation:ctablink 1s steps(1,end) infinite}
   .testcta:hover{filter:brightness(1.06)}
@@ -49,11 +50,21 @@
   .dl .ico svg{width:100%;height:100%;fill:currentColor}
   .dl h3{font-family:var(--font-body);font-weight:600;font-size:1.05rem;margin:0}
   .dl .plat{font-family:var(--font-mono);font-size:.68rem;color:var(--muted);letter-spacing:.04em}
-  .dl .btn{margin-top:12px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);
-    border-radius:10px;padding:10px;text-align:center;font-weight:600;font-size:.86rem;cursor:not-allowed}
-  .dl.ready .btn{background:var(--accent);color:var(--on-accent);border-color:var(--accent);cursor:pointer}
-  .dl .soon{position:absolute;top:16px;right:16px;font-family:var(--font-mono);font-size:.58rem;letter-spacing:.08em;
-    text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+  .dl[data-plat]{cursor:pointer;transition:border-color .15s,transform .1s}
+  .dl[data-plat]:hover{border-color:var(--accent)}
+  .dl[data-plat]:active{transform:scale(.99)}
+  .dl .btn{margin-top:12px;background:var(--accent);border:1px solid var(--accent);color:var(--on-accent);
+    border-radius:10px;padding:10px;text-align:center;font-weight:600;font-size:.86rem;cursor:pointer}
+  /* Installations-Anleitung (Overlay) */
+  .imodal{position:fixed;inset:0;z-index:50;background:rgba(5,8,12,.78);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px}
+  .imodal[hidden]{display:none}
+  .icard{background:var(--surface);border:1px solid var(--line);border-radius:18px;max-width:420px;width:100%;padding:24px 22px;position:relative}
+  .icard h3{font-family:var(--font-display);font-weight:600;font-size:1.3rem;margin:0 0 14px}
+  .icard ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px}
+  .icard li{line-height:1.5}
+  .iclose{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer}
+  .iopen{display:block;margin-top:18px;background:var(--accent);color:var(--on-accent);text-align:center;text-decoration:none;font-weight:600;border-radius:11px;padding:13px}
+  .inote{color:var(--muted);font-size:.82rem;margin:12px 0 0}
 
   .how{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px 24px;margin-top:8px}
   .how ol{margin:0;padding-left:20px}
@@ -98,39 +109,39 @@
   </header>
 
   <section>
-    <h2>Herunterladen</h2>
-    <p class="lead">stilla kommt für jedes Gerät. Die Apps sind gerade im Aufbau — trag dich bald ein, um es zuerst zu testen.</p>
-    <div class="downloads">
-      <div class="dl">
-        <span class="soon">bald</span>
-        <div class="ico"><svg viewBox="0 0 24 24"><path d="M17.6 9.5l1.4-2.4a.3.3 0 00-.5-.3l-1.4 2.5a8.7 8.7 0 00-6.2 0L9.5 6.8a.3.3 0 00-.5.3l1.4 2.4A7.6 7.6 0 006 15.5h12a7.6 7.6 0 00-.4-6zM9 13.3a.7.7 0 110-1.4.7.7 0 010 1.4zm6 0a.7.7 0 110-1.4.7.7 0 010 1.4z"/></svg></div>
-        <h3>Android</h3>
-        <span class="plat">.apk · direkt, ohne Play Store</span>
-        <div class="btn">bald verfügbar</div>
-      </div>
-      <div class="dl">
-        <span class="soon">bald</span>
+    <h2>Installieren</h2>
+    <p class="lead">stilla läuft direkt als App auf deinem Gerät — ohne App-Store. Wähle dein Gerät, du bekommst eine kurze Anleitung.</p>
+    <div class="downloads downloads-3">
+      <div class="dl" data-plat="iphone" role="button" tabindex="0">
         <div class="ico"><svg viewBox="0 0 24 24"><path d="M16.3 12.7c0-2 1.6-3 1.7-3a3.7 3.7 0 00-2.9-1.6c-1.2-.1-2.4.7-3 .7-.6 0-1.6-.7-2.6-.7a3.9 3.9 0 00-3.3 2C3.8 15 5.8 20 7.9 20c1 0 1.4-.7 2.6-.7 1.2 0 1.5.7 2.6.7 1.1 0 1.8-1 2.5-2a8 8 0 001.1-2.3 3.5 3.5 0 01-2.4-3zM14.5 6.3A3.5 3.5 0 0015.3 4a3.6 3.6 0 00-2.3 1.2 3.3 3.3 0 00-.8 2.2 3 3 0 002.3-1.1z"/></svg></div>
         <h3>iPhone</h3>
-        <span class="plat">App Store · in Prüfung</span>
-        <div class="btn">bald verfügbar</div>
+        <span class="plat">Zum Home-Bildschirm</span>
+        <div class="btn">Anleitung</div>
       </div>
-      <div class="dl">
-        <span class="soon">bald</span>
-        <div class="ico"><svg viewBox="0 0 24 24"><path d="M14.5 6.3A3.5 3.5 0 0015.3 4a3.6 3.6 0 00-2.3 1.2 3.3 3.3 0 00-.8 2.2 3 3 0 002.3-1.1zm1.8 6.4c0-2 1.6-3 1.7-3a3.7 3.7 0 00-2.9-1.6c-1.2-.1-2.4.7-3 .7-.6 0-1.6-.7-2.6-.7a3.9 3.9 0 00-3.3 2C3.8 15 5.8 20 7.9 20c1 0 1.4-.7 2.6-.7 1.2 0 1.5.7 2.6.7 1.1 0 1.8-1 2.5-2a8 8 0 001.1-2.3 3.5 3.5 0 01-2.9-3z"/></svg></div>
-        <h3>Mac</h3>
-        <span class="plat">.dmg · macOS Desktop</span>
-        <div class="btn">bald verfügbar</div>
+      <div class="dl" data-plat="android" role="button" tabindex="0">
+        <div class="ico"><svg viewBox="0 0 24 24"><path d="M17.6 9.5l1.4-2.4a.3.3 0 00-.5-.3l-1.4 2.5a8.7 8.7 0 00-6.2 0L9.5 6.8a.3.3 0 00-.5.3l1.4 2.4A7.6 7.6 0 006 15.5h12a7.6 7.6 0 00-.4-6zM9 13.3a.7.7 0 110-1.4.7.7 0 010 1.4zm6 0a.7.7 0 110-1.4.7.7 0 010 1.4z"/></svg></div>
+        <h3>Android</h3>
+        <span class="plat">App installieren</span>
+        <div class="btn">Anleitung</div>
       </div>
-      <div class="dl">
-        <span class="soon">bald</span>
+      <div class="dl" data-plat="windows" role="button" tabindex="0">
         <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 5.5l7-1v7H3v-6zm0 7h7v7l-7-1v-6zm8-8.2L21 3v8.5h-10V4.3zm0 8.2h10V21l-10-1.3V12.5z"/></svg></div>
         <h3>Windows</h3>
-        <span class="plat">.exe · Windows Desktop</span>
-        <div class="btn">bald verfügbar</div>
+        <span class="plat">Als App installieren</span>
+        <div class="btn">Anleitung</div>
       </div>
     </div>
   </section>
+
+  <div class="imodal" id="imodal" hidden>
+    <div class="icard">
+      <button class="iclose" id="iclose" aria-label="Schließen">✕</button>
+      <h3 id="ititle">Installieren</h3>
+      <ol id="isteps"></ol>
+      <a class="iopen" id="iopen" href="https://stilla-h5v4.onrender.com" target="_blank" rel="noopener">stilla öffnen</a>
+      <p class="inote" id="inote"></p>
+    </div>
+  </div>
 
   <section>
     <h2>Wie stilla verschlüsselt</h2>
@@ -160,3 +171,42 @@
     <p>getstilla.me · ein unabhängiges Projekt</p>
   </footer>
 </div>
+<script>
+(function(){
+  var APP="https://stilla-h5v4.onrender.com";
+  var GUIDE={
+    iphone:{title:"Auf dem iPhone installieren",steps:[
+      "Tippe unten auf „stilla öffnen“ – die App startet in Safari.",
+      "Tippe auf das Teilen-Symbol (Viereck mit Pfeil nach oben).",
+      "Wähle „Zum Home-Bildschirm“.",
+      "Öffne stilla über das neue Icon – fertig.",
+      "Benachrichtigungen: in der App → Einstellungen → „Benachrichtigungen aktivieren“."],
+      note:"Hinweis: Auf dem iPhone geht das nur über Safari (ab iOS 16.4)."},
+    android:{title:"Auf Android installieren",steps:[
+      "Tippe unten auf „stilla öffnen“ – die App startet in Chrome.",
+      "Tippe oben rechts auf das Menü (⋮).",
+      "Wähle „App installieren“ bzw. „Zum Startbildschirm hinzufügen“.",
+      "Bestätigen – stilla liegt als App auf dem Handy."],note:""},
+    windows:{title:"Auf Windows installieren",steps:[
+      "Öffne unten „stilla öffnen“ in Chrome oder Edge.",
+      "Klicke rechts in der Adressleiste auf das Installieren-Symbol (Monitor mit Pfeil).",
+      "Alternativ: Menü (⋮) → „Apps“ → „Diese Seite als App installieren“.",
+      "Installieren – stilla erscheint als eigenes Programm."],note:""}
+  };
+  var modal=document.getElementById("imodal");
+  function openGuide(p){var g=GUIDE[p];if(!g)return;
+    document.getElementById("ititle").textContent=g.title;
+    var ol=document.getElementById("isteps");ol.innerHTML="";
+    g.steps.forEach(function(s){var li=document.createElement("li");li.textContent=s;ol.appendChild(li);});
+    document.getElementById("inote").textContent=g.note||"";
+    document.getElementById("iopen").href=APP;
+    modal.hidden=false;}
+  function close(){modal.hidden=true;}
+  Array.prototype.forEach.call(document.querySelectorAll(".dl[data-plat]"),function(d){
+    d.addEventListener("click",function(){openGuide(d.getAttribute("data-plat"));});
+    d.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" ")openGuide(d.getAttribute("data-plat"));});
+  });
+  document.getElementById("iclose").addEventListener("click",close);
+  modal.addEventListener("click",function(e){if(e.target===modal)close();});
+})();
+</script>
