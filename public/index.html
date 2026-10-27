@@ -283,7 +283,8 @@
       </div>
 
       <div class="setlbl">PRIVATSPHÄRE</div>
-      <label class="switch"><span>Lesebestätigung senden (Haken)</span><input type="checkbox" id="optReceipts"><span class="sw"></span></label>
+      <label class="switch"><span>Lesebestätigung (blauer Haken)</span><input type="checkbox" id="optReceipts"><span class="sw"></span></label>
+      <p class="sub" style="font-size:.74rem;margin:4px 2px 0">Aus = du sendest keine blauen Haken und siehst auch keine der anderen.</p>
       <label class="switch"><span>Gelesene Nachrichten nach 24 h löschen</span><input type="checkbox" id="optAutodel"><span class="sw"></span></label>
       <p class="sub" style="font-size:.74rem;margin:6px 2px 0">Screenshot-Warnungen kommen mit der nativen App – im Browser technisch nicht möglich.</p>
 
@@ -485,7 +486,7 @@ function renderThread(n){
     }else{
       d.textContent=m.text;
     }
-    if(mine){const st=m.st||1;const meta=document.createElement("div");meta.className="meta";meta.innerHTML='<span class="tick'+(st>=3?' read':'')+'">'+(st>=2?'✓✓':'✓')+'</span>';d.appendChild(meta);}
+    if(mine){let st=m.st||1;if(!receiptsOn()&&st>2)st=2;/* Lesebestätigung aus -> kein blauer Haken (gegenseitig) */const meta=document.createElement("div");meta.className="meta";meta.innerHTML='<span class="tick'+(st>=3?' read':'')+'">'+(st>=2?'✓✓':'✓')+'</span>';d.appendChild(meta);}
     attachLongPress(d,()=>openMsgMenu(n,m));
     box.appendChild(d);
   });
