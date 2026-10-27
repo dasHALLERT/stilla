@@ -130,8 +130,8 @@
   .stories{flex:none;display:flex;gap:12px;overflow-x:auto;padding:12px 2px 10px;border-bottom:1px solid var(--line)}
   .stories::-webkit-scrollbar{display:none}
   .story{flex:none;width:62px;text-align:center;cursor:pointer}
-  .story .ring{width:58px;height:58px;border-radius:50%;padding:2px;background:conic-gradient(from 200deg,var(--accent),#9fd8d0,var(--accent));display:flex;align-items:center;justify-content:center;position:relative}
-  .story.seen .ring,.story.mine .ring{background:var(--line)}
+  .story .ring{width:58px;height:58px;border-radius:50%;padding:3px;background:var(--accent);display:flex;align-items:center;justify-content:center;position:relative}
+  .story.nostory .ring{background:var(--line)}
   .story .ring .av{width:100%;height:100%;border:2px solid var(--bg)}
   .story .lbl{font-size:.66rem;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .story .plus{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--on);font-size:.85rem;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
@@ -188,6 +188,27 @@
   .composer textarea{width:100%;background:var(--s2);border:1px solid var(--line);border-radius:11px;padding:11px 14px;color:var(--fg);font-size:.95rem;font-family:inherit;resize:none;min-height:70px}
   .compcount{text-align:right;font-size:.72rem;color:var(--muted);margin-top:-4px}
   .composer button:disabled{opacity:.5;cursor:default}
+  /* Teilen-Button im Popup */
+  .pvshare{margin-left:auto;background:none;border:none;color:#fff;cursor:pointer;padding:6px;width:auto}
+  .pvshare svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  /* Teilen-Sheet */
+  .sharesheet{position:absolute;inset:0;z-index:64;background:rgba(5,8,12,.6);display:none;align-items:flex-end;justify-content:center}
+  .sharesheet.on{display:flex}
+  .sscard{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:100%;max-width:460px;margin:0 8px calc(10px + env(safe-area-inset-bottom,0px));padding:14px;display:flex;flex-direction:column;gap:8px;max-height:80%;overflow-y:auto}
+  .sshead{display:flex;align-items:center;justify-content:space-between}
+  .sshead span{font-family:Georgia,serif;font-weight:600;font-size:1.1rem}
+  .sshead .x{background:none;border:none;color:var(--muted);font-size:1.3rem;width:auto;cursor:pointer}
+  .ssstory{background:var(--s2);border:1px solid var(--line);color:var(--fg);text-align:left;border-radius:11px;padding:12px 14px}
+  .ssstory.sel{border-color:var(--accent);color:var(--accent)}
+  .ssstory .ssplus{font-weight:700}
+  .sslbl{font-size:.74rem;color:var(--muted);margin:6px 2px 0}
+  .sslist{display:flex;flex-direction:column}
+  .ssrow{display:flex;align-items:center;gap:12px;padding:10px 4px;cursor:pointer;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+  .ssrow .av{width:38px;height:38px}
+  .ssrow .ssnm{flex:1;min-width:0;font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ssrow .sscheck{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none}
+  .ssrow.on .sscheck{background:var(--accent);border-color:var(--accent)}
+  .bub video.bubvid{max-width:100%;border-radius:11px;display:block;background:#000}
 
   /* Aktionsmenü (Langdruck) */
   #menu{position:absolute;inset:0;z-index:55;background:rgba(5,8,12,.55);display:none;align-items:flex-end;justify-content:center}
@@ -360,6 +381,15 @@
       <button id="compShare">Teilen</button>
     </div>
   </div>
+  <div class="sharesheet" id="sharesheet">
+    <div class="sscard">
+      <div class="sshead"><span>Teilen</span><button class="x" id="ssX">✕</button></div>
+      <button class="ssstory" id="ssStory"><span class="ssplus">＋</span> Zu meiner Story</button>
+      <div class="sslbl">An Freunde senden</div>
+      <div class="sslist" id="ssList"></div>
+      <button id="ssSend" disabled>Senden</button>
+    </div>
+  </div>
   <input type="file" id="storyFile" accept="image/*" style="display:none">
   <div id="menu"><div class="mcard" id="menuCard"></div></div>
   <div class="toast" id="toast"></div>
@@ -501,7 +531,7 @@ function renderContacts(){
   box.innerHTML="";
   nums.forEach(n=>{const p=c[n]||{};const lg=logOf(n);const last=lg[lg.length-1];const uc=u[n]||0;const isPin=P.includes(n);
     let preview;
-    if(last){const body=last.att?(last.att.kind==="img"?"📷 Bild":last.att.kind==="file"?"📎 Datei":last.text):last.text;preview=(isMine(last)?"Du: ":"")+body;}
+    if(last){const body=last.att?(last.att.kind==="img"?"📷 Bild":last.att.kind==="video"?"🎞️ Video":last.att.kind==="file"?"📎 Datei":last.text):last.text;preview=(isMine(last)?"Du: ":"")+body;}
     else preview=p.status||fmt(n);
     const r=document.createElement("div");r.className="row";
     const av=document.createElement("div");av.className="av";setAv(av,p);
@@ -525,6 +555,10 @@ function renderThread(n){
       const img=document.createElement("img");img.className="bubimg";img.src=a.data;img.alt=a.name||"Bild";
       img.onclick=()=>{if(clickGuarded())return;openLightbox("img",a.data);};
       d.appendChild(img);
+      if(m.text){const c=document.createElement("div");c.className="cap";c.textContent=m.text;d.appendChild(c);}
+    }else if(a&&a.kind==="video"){
+      const v=document.createElement("video");v.className="bubvid";v.src=a.data;v.controls=true;v.playsInline=true;
+      d.appendChild(v);
       if(m.text){const c=document.createElement("div");c.className="cap";c.textContent=m.text;d.appendChild(c);}
     }else if(a&&a.kind==="file"){
       const link=document.createElement("a");link.className="filechip";link.href=a.data;link.download=a.name||"datei";
@@ -622,6 +656,10 @@ async function sendFiles(files){
       }else if(f.type&&f.type.startsWith("image/")){
         const data=await shrinkImage(f);
         await deliver("",{kind:"img",name:f.name,mime:"image/jpeg",data});
+      }else if(f.type&&f.type.startsWith("video/")){
+        if(f.size>MAX_VIDEO){toast('"'+f.name+'" ist zu groß (max '+fmtSize(MAX_VIDEO)+' im Test).');continue;}
+        const data=await fileToDataURL(f);
+        await deliver("",{kind:"video",name:f.name,mime:f.type||"video/mp4",data});
       }else{
         if(f.size>MAX_FILE){toast('"'+f.name+'" ist zu groß (max 3 MB im Test).');continue;}
         const data=await fileToDataURL(f);
@@ -782,6 +820,9 @@ function openPost(medium,id){
   const who=(post.owner===me.number)?"Du":(post.name||("Nummer "+fmt(post.owner)));
   const hi=document.createElement("div");hi.innerHTML=`<div class="pn">${esc(who)}</div><div class="pt">${timeAgo(post.ts)}</div>`;
   head.appendChild(av);head.appendChild(hi);
+  const sh=document.createElement("button");sh.className="pvshare";sh.setAttribute("aria-label","Teilen");
+  sh.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M12 16V3"/><path d="M7 8l5-5 5 5"/></svg>';
+  sh.onclick=()=>openShare(medium,post);head.appendChild(sh);
   const media=document.createElement("div");media.className="pvmedia";
   if(medium==="pic"){const img=document.createElement("img");img.src=post.data;media.appendChild(img);}
   else{const v=document.createElement("video");v.src=post.data;v.controls=true;v.playsInline=true;v.autoplay=true;media.appendChild(v);}
@@ -795,6 +836,45 @@ function openPost(medium,id){
   $("#postview").classList.add("on");
 }
 function closePost(){const v=$("#pvCard video");if(v){try{v.pause();}catch{}}$("#postview").classList.remove("on");$("#pvCard").innerHTML="";}
+
+/* ---------- Teilen (an Kontakte / in Story) ---------- */
+async function sendToNumber(num,text,att){
+  const p=contacts()[num]||await resolvePeer(num); if(!p||!p.kexPub)return false;
+  const ts=Date.now();
+  const lg=logOf(num);lg.push({from:me.number,mine:true,text:text||"",att:att||null,ts,st:1});saveLog(num,lg);
+  try{const env=encrypt(p.kexPub,packMsg(text,att));await api("/send","POST",{to:num,from:me.number,envelope:env,ts});return true;}catch{return false;}
+}
+let shareCur=null,shareSel={},shareStoryFlag=false;
+function openShare(medium,post){
+  shareCur={medium,post};shareSel={};shareStoryFlag=false;
+  $("#ssStory").classList.remove("sel");
+  const list=$("#ssList");list.innerHTML="";
+  const c=contacts();const nums=Object.keys(c);
+  if(!nums.length){list.innerHTML='<div class="empty" style="padding:16px">Noch keine Kontakte zum Senden.</div>';}
+  nums.forEach(n=>{const p=c[n]||{};const row=document.createElement("div");row.className="ssrow";
+    const av=document.createElement("div");av.className="av";setAv(av,p);
+    const nm=document.createElement("div");nm.className="ssnm";nm.textContent=p.name||("Nummer "+fmt(n));
+    const ck=document.createElement("div");ck.className="sscheck";
+    row.appendChild(av);row.appendChild(nm);row.appendChild(ck);
+    row.onclick=()=>{if(shareSel[n])delete shareSel[n];else shareSel[n]=true;row.classList.toggle("on",!!shareSel[n]);updateShareBtn();};
+    list.appendChild(row);});
+  updateShareBtn();$("#sharesheet").classList.add("on");
+}
+function closeShare(){$("#sharesheet").classList.remove("on");shareCur=null;}
+function updateShareBtn(){const n=Object.keys(shareSel).length;const b=$("#ssSend");
+  b.disabled=(!n&&!shareStoryFlag);
+  b.textContent=n?("An "+n+(n===1?" Kontakt":" Kontakte")+" senden"+(shareStoryFlag?" + Story":"")):(shareStoryFlag?"Zur Story":"Senden");}
+async function doShareSend(){
+  if(!shareCur)return;const {medium,post}=shareCur;
+  const att=(medium==="pic")?{kind:"img",name:post.title||"Bild",mime:post.mime,data:post.data}:{kind:"video",name:post.title||"Clip",mime:post.mime,data:post.data};
+  const nums=Object.keys(shareSel);let sent=0;
+  for(const n of nums){ if(await sendToNumber(n,"",att))sent++; }
+  if(shareStoryFlag) await shareStoryData(post.data,post.mime);
+  closeShare();
+  if(peer&&shareSel[peer.number])renderThread(peer.number);
+  renderContacts();
+  toast((sent?("An "+sent+(sent===1?" Kontakt":" Kontakte")+" gesendet"):"")+(shareStoryFlag?((sent?" · ":"")+"zur Story"):"")||"Nichts ausgewählt.");
+}
 
 async function shareStoryData(data,mime){
   const ts=Date.now();const id=me.number+"-"+ts;
@@ -811,7 +891,8 @@ function renderStories(){
   const items=storiesAll();const groups={};items.forEach(s=>{(groups[s.owner]=groups[s.owner]||[]).push(s);});
   document.querySelectorAll(".stories").forEach(strip=>{
     strip.innerHTML="";
-    const add=document.createElement("div");add.className="story mine";
+    const haveMine=!!(groups[me.number]&&groups[me.number].length);
+    const add=document.createElement("div");add.className="story mine"+(haveMine?"":" nostory");
     const ring=document.createElement("div");ring.className="ring";const av=document.createElement("div");av.className="av";setAv(av,me);ring.appendChild(av);
     const plus=document.createElement("div");plus.className="plus";plus.textContent="+";ring.appendChild(plus);
     add.appendChild(ring);const lbl=document.createElement("div");lbl.className="lbl";lbl.textContent="Deine Story";add.appendChild(lbl);
@@ -950,6 +1031,10 @@ document.querySelectorAll("[data-lbclose]").forEach(b=>b.onclick=closeLightbox);
 $("#lightbox").onclick=e=>{if(e.target.id==="lightbox")closeLightbox();};
 document.querySelectorAll("[data-pvclose]").forEach(b=>b.onclick=closePost);
 $("#postview").onclick=e=>{if(e.target.id==="postview")closePost();};
+$("#ssX").onclick=closeShare;
+$("#sharesheet").onclick=e=>{if(e.target.id==="sharesheet")closeShare();};
+$("#ssStory").onclick=()=>{shareStoryFlag=!shareStoryFlag;$("#ssStory").classList.toggle("sel",shareStoryFlag);updateShareBtn();};
+$("#ssSend").onclick=doShareSend;
 $("#menu").onclick=e=>{if(e.target.id==="menu")closeMenu();};
 
 /* Reiter P1CZ / CL1PZ + Stories */
