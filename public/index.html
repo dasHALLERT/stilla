@@ -45,6 +45,10 @@
   .row .mid{flex:1;min-width:0}.row .nm{font-weight:600;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .row .pv{color:var(--muted);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .row .un{background:var(--accent);color:var(--on);font-family:ui-monospace,monospace;font-size:.62rem;font-weight:600;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 6px}
+  .presbar{font-family:ui-monospace,monospace;font-size:.76rem;color:var(--muted);letter-spacing:.02em;padding:10px 2px 6px;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+  .presbar b{color:#3fbf5f}
+  .avwrap{position:relative;flex:none}
+  .onlinedot{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#3fbf5f;border:2px solid var(--bg)}
 
   .fab{position:absolute;right:16px;bottom:calc(78px + env(safe-area-inset-bottom,0px));width:54px;height:54px;border-radius:50%;background:var(--accent);color:var(--on);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px -6px color-mix(in srgb,var(--accent) 50%,transparent);z-index:5}
   .fab svg{width:24px;height:24px;stroke:var(--on);stroke-width:2.2;fill:none;stroke-linecap:round}
@@ -63,6 +67,7 @@
   .bub .meta{font-size:.6rem;margin-top:3px;text-align:right;opacity:.85}
   .bub.out .meta{color:var(--on)}
   .bub .tick.read{color:#1f4fd6;font-weight:700}
+  .bub.tomb{background:transparent;border:1px dashed var(--line);color:var(--muted);font-style:italic;font-size:.82rem}
   .row .pin{color:var(--muted);font-size:.8rem;margin-left:2px}
   .inbar input{flex:1}.inbar .snd{width:46px;flex:none;display:flex;align-items:center;justify-content:center}
   .inbar .snd svg{width:18px;height:18px;fill:var(--on)}
@@ -280,7 +285,7 @@
       </div>
     </div>
     <div class="stories" id="stHome"></div>
-    <div class="scroll" id="contacts"><div class="requests" id="requests"></div><div id="contactList"></div></div>
+    <div class="scroll" id="contacts"><div class="presbar" id="presbar" style="display:none"></div><div class="requests" id="requests"></div><div id="contactList"></div></div>
     <button class="fab" id="fab" aria-label="hinzufügen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
     <div class="tabbar" data-tabs>
       <button data-go="home"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-11.9 7.6L3 21l1.9-6.1A8.4 8.4 0 1121 11.5z"/></svg><span class="tn">CH4TZ</span></button>
@@ -335,6 +340,7 @@
       <button class="back" id="backBtn">‹</button>
       <div class="av" id="cvav">?</div>
       <div style="flex:1;min-width:0"><div class="nm" id="peerName">—</div><div class="nu" id="peerNumLbl"></div></div>
+      <button class="ic" id="chatMenuBtn" aria-label="Menü"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
     <div class="e2e">🔒 Ende-zu-Ende verschlüsselt</div>
     <div class="thread" id="thread"></div>
@@ -448,7 +454,8 @@ const api=(p,m="POST",d)=>fetch(p,{method:m,headers:{"Content-Type":"application
 const fmt=n=>(""+n).replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
 const esc=s=>{const d=document.createElement("div");d.textContent=(s==null?"":s);return d.innerHTML;};
 const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v;}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
-let me=null, peer=null, poll=null;
+let me=null, peer=null, poll=null, pres=null;
+let online=new Set();   // Nummern, die gerade online sind (Präsenz)
 
 /* data stores (local, persistent) */
 const contacts=()=>LS.get("stilla_contacts",{});                 // number -> {name,kexPub}
@@ -578,7 +585,7 @@ async function lookupKeys(num){
 async function sendCtrl(num,kexPub,att){try{const env=encrypt(kexPub,packMsg("",att));await api("/send","POST",{to:num,from:me.number,envelope:env,ts:Date.now()});return true;}catch{return false;}}
 
 function renderContacts(){
-  renderRequests();
+  renderRequests();renderPresenceBar();
   const box=$("#contactList");const c=contacts();const u=unread();const nums=Object.keys(c);
   if(!nums.length){box.innerHTML='<div class="empty">Noch keine Chats.<br>Tipp auf <b>+</b>, gib deine Nummer weiter oder füge jemanden als Freund hinzu.</div>';return;}
   // angepinnte zuerst, dann nach letzter Nachricht
@@ -587,13 +594,15 @@ function renderContacts(){
   box.innerHTML="";
   nums.forEach(n=>{const p=c[n]||{};const lg=logOf(n);const last=lg[lg.length-1];const uc=u[n]||0;const isPin=P.includes(n);
     let preview;
-    if(last){const body=last.att?(last.att.kind==="img"?"📷 Bild":last.att.kind==="video"?"🎞️ Video":last.att.kind==="file"?"📎 Datei":last.text):last.text;preview=(isMine(last)?"Du: ":"")+body;}
+    if(last){const body=last.del?"🚫 Nachricht gelöscht":(last.att?(last.att.kind==="img"?"📷 Bild":last.att.kind==="video"?"🎞️ Video":last.att.kind==="file"?"📎 Datei":last.text):last.text);preview=(isMine(last)?"Du: ":"")+body;}
     else preview=p.status||fmt(n);
     const r=document.createElement("div");r.className="row";
-    const av=document.createElement("div");av.className="av";setAv(av,p);
+    const aw=document.createElement("div");aw.className="avwrap";
+    const av=document.createElement("div");av.className="av";setAv(av,p);aw.appendChild(av);
+    if(online.has(n)){const dot=document.createElement("span");dot.className="onlinedot";aw.appendChild(dot);}
     const mid=document.createElement("div");mid.className="mid";
     mid.innerHTML=`<div class="nm">${esc(p.name||("Nummer "+fmt(n)))}${isPin?' <span class="pin">📌</span>':''}</div><div class="pv">${esc(preview)}</div>`;
-    r.appendChild(av);r.appendChild(mid);
+    r.appendChild(aw);r.appendChild(mid);
     if(uc){const b=document.createElement("span");b.className="un";b.textContent=uc>99?"99+":uc;r.appendChild(b);}
     r.onclick=()=>{if(clickGuarded())return;openChat(n);};
     attachLongPress(r,()=>openChatMenu(n));
@@ -607,6 +616,10 @@ function renderThread(n){
     const mine=isMine(m);
     const d=document.createElement("div");d.className="bub "+(mine?"out":"in");
     const a=m.att;
+    if(m.del){
+      d.className="bub "+(mine?"out":"in")+" tomb";d.textContent="Nachricht wurde bei euch beiden gelöscht.";
+      attachLongPress(d,()=>openMsgMenu(n,m));box.appendChild(d);return;
+    }
     if(a&&a.kind==="img"){
       const img=document.createElement("img");img.className="bubimg";img.src=a.data;img.alt=a.name||"Bild";
       img.onclick=()=>{if(clickGuarded())return;openLightbox("img",a.data);};
@@ -708,22 +721,29 @@ async function deliver(text,att){
 async function sendAck(to,t,ref){const p=contacts()[to]||await resolvePeer(to);if(!p||!p.kexPub)return;try{const env=encrypt(p.kexPub,packMsg("",{kind:"ack",t,ref}));await api("/send","POST",{to,from:me.number,envelope:env,ts:Date.now()});}catch{}}
 async function sendDel(to,ref){const p=contacts()[to]||await resolvePeer(to);if(!p||!p.kexPub)return;try{const env=encrypt(p.kexPub,packMsg("",{kind:"del",ref}));await api("/send","POST",{to,from:me.number,envelope:env,ts:Date.now()});}catch{}}
 function deleteForMe(num,ts){const lg=logOf(num).filter(m=>m.ts!==ts);saveLog(num,lg);if(peer&&peer.number===num)renderThread(num);renderContacts();toast("Für dich gelöscht");}
-async function deleteForAll(num,ts){const lg=logOf(num).filter(m=>m.ts!==ts);saveLog(num,lg);if(peer&&peer.number===num)renderThread(num);renderContacts();await sendDel(num,ts);toast("Bei beiden gelöscht");}
+async function deleteForAll(num,ts){const lg=logOf(num);const it=lg.find(m=>m.ts===ts);if(it){it.del=true;it.att=null;it.text="";}saveLog(num,lg);if(peer&&peer.number===num)renderThread(num);renderContacts();await sendDel(num,ts);toast("Bei beiden gelöscht");}
 function openMsgMenu(num,m){
   const mine=isMine(m);const items=[];
-  if(mine)items.push({label:((m.st||1)<3?"Zurückziehen (noch ungelesen)":"Für alle löschen"),danger:true,fn:()=>deleteForAll(num,m.ts)});
+  if(!m.del&&mine)items.push({label:((m.st||1)<3?"Zurückziehen (noch ungelesen)":"Für alle löschen"),danger:true,fn:()=>deleteForAll(num,m.ts)});
   items.push({label:"Für mich löschen",danger:true,fn:()=>deleteForMe(num,m.ts)});
-  openMenu(mine?"Deine Nachricht":"Nachricht",items);
+  openMenu(m.del?"Gelöschte Nachricht":(mine?"Deine Nachricht":"Nachricht"),items);
+}
+function openChatHeaderMenu(){
+  if(!peer)return;
+  openMenu(peer.name||("Nummer "+fmt(peer.number)),[
+    {label:"Chat löschen (nur bei dir)",danger:true,fn:()=>{clearChat(peer.number);go("home");}}
+  ]);
 }
 function openChatMenu(num){
   const p=contacts()[num]||{};const pinned=pins().includes(num);
   openMenu(p.name||("Nummer "+fmt(num)),[
     {label:pinned?"Pin lösen":"Anpinnen",fn:()=>togglePin(num)},
-    {label:"Chat löschen",danger:true,fn:()=>deleteChat(num)}
+    {label:"Freund löschen",danger:true,fn:()=>deleteChat(num)}
   ]);
 }
 function togglePin(num){let a=pins();a=a.includes(num)?a.filter(x=>x!==num):[num,...a];savePins(a);renderContacts();}
-function deleteChat(num){try{localStorage.removeItem("stilla_log_"+num);}catch{}const c=contacts();delete c[num];saveContacts(c);const u=unread();delete u[num];saveUnread(u);savePins(pins().filter(x=>x!==num));if(peer&&peer.number===num){peer=null;go("home");}renderContacts();toast("Chat gelöscht");}
+function clearChat(num){try{localStorage.removeItem("stilla_log_"+num);}catch{}const u=unread();delete u[num];saveUnread(u);if(peer&&peer.number===num)renderThread(num);renderContacts();toast("Chat geleert");}
+function deleteChat(num){try{localStorage.removeItem("stilla_log_"+num);}catch{}const c=contacts();delete c[num];saveContacts(c);const u=unread();delete u[num];saveUnread(u);savePins(pins().filter(x=>x!==num));if(peer&&peer.number===num){peer=null;go("home");}renderContacts();toast("Freund entfernt");}
 
 /* löscht lokal gelesene Nachrichten älter als 24 h (falls aktiviert) */
 function autodelSweep(){
@@ -794,7 +814,7 @@ async function fetchLoop(){
     if(att&&att.kind==="ack"){ const lg2=logOf(from);let ch=false;
       lg2.forEach(x=>{if(isMine(x)&&x.ts<=att.ref){if(att.t==="delivered"&&(x.st||1)<2){x.st=2;ch=true;}if(att.t==="read"&&(x.st||1)<3){x.st=3;x.readAt=Date.now();ch=true;}}});
       if(ch){saveLog(from,lg2);if(peer&&peer.number===from)renderThread(from);} continue; }
-    if(att&&att.kind==="del"){ const lg2=logOf(from).filter(x=>x.ts!==att.ref);saveLog(from,lg2);if(peer&&peer.number===from)renderThread(from);changed=true; continue; }
+    if(att&&att.kind==="del"){ const lg2=logOf(from);const it=lg2.find(x=>x.ts===att.ref);if(it){it.del=true;it.att=null;it.text="";saveLog(from,lg2);if(peer&&peer.number===from)renderThread(from);changed=true;} continue; }
     if(att&&att.kind==="post"){ addPostLocal(att.medium,{id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,medium:att.medium,mime:att.mime,data:att.data,title:att.title||"",text:att.text||"",ts:att.ts||m.ts||Date.now(),likes:{}}); feedTouched[att.medium]=true; continue; }
     if(att&&att.kind==="story"){ const a2=storiesAll(); if(!a2.some(s=>s.id===att.id)){a2.unshift({id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,data:att.data,mime:att.mime||"image/jpeg",title:att.title||"",postId:att.postId||"",medium:att.medium||"pic",ts:att.ts||m.ts||Date.now()}); saveStories(a2); storiesTouched=true;} continue; }
     if(att&&att.kind==="reaction"){
@@ -1068,6 +1088,25 @@ function migrateMine(){
     if(ch)LS.set(k,lg);}
   LS.set("stilla_mig_mine",true);
 }
+/* ---------- Präsenz (wer ist online) ---------- */
+function renderPresenceBar(){
+  const el=$("#presbar");if(!el)return;
+  const nums=Object.keys(contacts());const total=nums.length;
+  if(!total){el.style.display="none";return;}
+  const on=nums.filter(n=>online.has(n)).length;
+  el.style.display="";el.innerHTML="Online <b>"+on+"</b>/"+total+(total===1?" Freund":" Freunde");
+}
+async function refreshPresence(){
+  if(!me)return;const nums=Object.keys(contacts());
+  if(!nums.length){online=new Set();renderPresenceBar();return;}
+  try{const r=await api("/presence?numbers="+encodeURIComponent(nums.join(",")),"GET");
+    if(r&&Array.isArray(r.online)){const before=[...online].sort().join(",");online=new Set(r.online);
+      renderPresenceBar();
+      if(before!==[...online].sort().join(",") && $("#home").classList.contains("on"))renderContacts();
+    }
+  }catch{}
+}
+
 function startApp(){
   migrateMine();
   setAv($("#homeAv"),me);$("#sheetNum").textContent=fmt(me.number);
@@ -1075,6 +1114,8 @@ function startApp(){
   ensureRegistered();
   if(poll)clearInterval(poll);
   fetchLoop(); poll=setInterval(fetchLoop,2500);
+  if(pres)clearInterval(pres);
+  refreshPresence(); pres=setInterval(refreshPresence,10000);
 }
 
 /* ---------- Einstellungen ---------- */
@@ -1116,6 +1157,7 @@ $("#fab").onclick=()=>{$("#sheetNum").textContent=fmt(me.number);$("#addsheet").
 $("#addBtn").onclick=addByNumber;
 $("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")addByNumber();});
 $("#backBtn").onclick=()=>{peer=null;go("home");};
+$("#chatMenuBtn").onclick=openChatHeaderMenu;
 $("#sendBtn").onclick=sendMsg;
 $("#msg").addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg();});
 

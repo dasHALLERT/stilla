@@ -20,6 +20,8 @@ const nacl = require("tweetnacl");   // geprüfte Krypto, läuft überall (auch 
 const directory = new Map();   // number -> { signPub, kexPub, name }
 const mailbox   = new Map();   // number -> [ {from, envelope, ts} ]
 const challenges = new Map();
+const lastSeen  = new Map();   // number -> Zeitpunkt des letzten Lebenszeichens (Präsenz)
+const ONLINE_MS = 30000;       // als "online" gilt, wer < 30 s aktiv war
 const nextNumber = () => { for(;;){ const n=String(crypto.randomInt(100000000,1000000000)); if(!directory.has(n)) return n; } };
 
 function send(res,code,obj){ res.writeHead(code,{"Content-Type":"application/json"}); res.end(JSON.stringify(obj)); }
@@ -68,6 +70,12 @@ const server = http.createServer(async (req,res)=>{
   if(req.method==="GET" && p==="/keys"){ const e=directory.get(url.searchParams.get("number"));
     return e?send(res,200,{number:url.searchParams.get("number"),...e}):send(res,404,{error:"unknown number"}); }
 
+  // Präsenz: welche der angefragten Nummern sind gerade online?
+  if(req.method==="GET" && p==="/presence"){ const now=Date.now();
+    const nums=(url.searchParams.get("numbers")||"").split(",").filter(Boolean);
+    const online=nums.filter(n=>{const t=lastSeen.get(n);return t&&(now-t)<ONLINE_MS;});
+    return send(res,200,{online}); }
+
   if(req.method==="POST" && p==="/challenge"){ const b=await body(req);
     if(!directory.has(b.number)) return send(res,404,{error:"unknown number"});
     const nonce=crypto.randomBytes(24).toString("base64"); challenges.set(b.number,nonce);
@@ -79,11 +87,13 @@ const server = http.createServer(async (req,res)=>{
     return send(res, verifyLogin(e.signPub,nonce,b.signature)?200:401, {ok:verifyLogin(e.signPub,nonce,b.signature)}); }
 
   if(req.method==="POST" && p==="/send"){ const b=await body(req);
+    if(b.from) lastSeen.set(b.from,Date.now());
     if(!directory.has(b.to)) return send(res,404,{error:"unknown recipient"});
     const q=mailbox.get(b.to)||[]; q.push({from:b.from,envelope:b.envelope,ts:Number(b.ts)||Date.now()}); mailbox.set(b.to,q);
     return send(res,200,{queued:true}); }
 
   if(req.method==="POST" && p==="/fetch"){ const b=await body(req);
+    if(b.number) lastSeen.set(b.number,Date.now());                  // Lebenszeichen fürs Online-Signal
     const q=mailbox.get(b.number)||[]; mailbox.delete(b.number);     // sofort löschen
     return send(res,200,{messages:q}); }
 
