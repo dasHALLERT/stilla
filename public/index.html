@@ -13,8 +13,10 @@
   :root{--bg:#10151e;--surface:#172030;--s2:#1e2a3a;--line:#2a3647;--fg:#e8eef3;--muted:#8798a8;--accent:#7cc3bb;--on:#07201d;--bad:#e68a8a;color-scheme:dark}
   :root[data-t="hell"]{--bg:#eef1f5;--surface:#ffffff;--s2:#f3f6f9;--line:#dce3ea;--fg:#16202b;--muted:#5f6d7c;color-scheme:light}
   *{box-sizing:border-box}html,body{height:100%;margin:0}
-  body{background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,"Segoe UI",sans-serif;line-height:1.5}
-  #app{max-width:520px;margin:0 auto;height:100%;height:100dvh;position:relative;display:flex;flex-direction:column}
+  /* Seiten-Scroll sperren: nur die inneren Listen scrollen, untere Leiste + Plus bleiben fix */
+  html{overflow:hidden}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,"Segoe UI",sans-serif;line-height:1.5;position:fixed;inset:0;overflow:hidden;overscroll-behavior:none}
+  #app{max-width:520px;margin:0 auto;height:100%;position:relative;display:flex;flex-direction:column}
   .view{position:absolute;inset:0;display:none;flex-direction:column;padding:0 14px}
   .view.on{display:flex}
   input{width:100%;background:var(--s2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;color:var(--fg);font-size:.95rem}
@@ -42,7 +44,7 @@
   .ic{background:none;border:none;color:var(--muted);cursor:pointer;padding:5px;width:auto}
   .ic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
-  .scroll{flex:1;min-height:0;overflow-y:auto}
+  .scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .empty{color:var(--muted);text-align:center;padding:40px 18px;font-size:.9rem}
   .empty b{color:var(--fg)}
   .row{display:flex;align-items:center;gap:12px;padding:12px 2px;cursor:pointer;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
@@ -66,7 +68,7 @@
   .cvhdr .av{width:34px;height:34px;cursor:pointer}.cvhdr .nm{font-weight:600;font-size:.95rem}
   .cvhdr .nu{font-family:ui-monospace,monospace;font-size:.6rem;color:var(--accent)}
   .e2e{color:var(--accent);font-size:.66rem;font-family:ui-monospace,monospace;text-align:center;padding:6px 0}
-  .thread{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding:8px 0}
+  .thread{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:7px;padding:8px 0}
   .bub{max-width:78%;padding:9px 12px;border-radius:15px;font-size:.92rem;word-wrap:break-word;white-space:pre-wrap}
   .in{align-self:flex-start;background:var(--s2);border-bottom-left-radius:5px}
   .out{align-self:flex-end;background:var(--accent);color:var(--on);border-bottom-right-radius:5px}
@@ -154,7 +156,7 @@
   .story .plus{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--on);font-size:.85rem;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
 
   /* Feed (P1CZ / CL1PZ) */
-  .feed{flex:1;min-height:0;overflow-y:auto;padding-bottom:16px}
+  .feed{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:16px}
   .post{background:var(--surface);border:1px solid var(--line);border-radius:16px;margin:12px 0;overflow:hidden}
   .post .ph{display:flex;align-items:center;gap:10px;padding:10px 12px}
   .post .ph .av{width:34px;height:34px}
@@ -294,7 +296,7 @@
   .prtabs{flex:none;display:flex;border-bottom:1px solid var(--line)}
   .prtabs button{flex:1;background:none;border:none;color:var(--muted);padding:11px;font-family:ui-monospace,monospace;font-weight:600;font-size:.72rem;letter-spacing:.08em;border-radius:0;border-bottom:2px solid transparent;cursor:pointer}
   .prtabs button.sel{color:var(--accent);border-bottom-color:var(--accent)}
-  .prfeed{flex:1;min-height:0;overflow-y:auto;padding:0 2px}
+  .prfeed{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 2px}
 
   /* Aktionsmenü (Langdruck) */
   #menu{position:absolute;inset:0;z-index:55;background:rgba(5,8,12,.55);display:none;align-items:flex-end;justify-content:center}
