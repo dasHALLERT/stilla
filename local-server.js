@@ -72,7 +72,7 @@ const server = http.createServer(async (req,res)=>{
 
   if(req.method==="POST" && p==="/send"){ const b=await body(req);
     if(!directory.has(b.to)) return send(res,404,{error:"unknown recipient"});
-    const q=mailbox.get(b.to)||[]; q.push({from:b.from,envelope:b.envelope,ts:Date.now()}); mailbox.set(b.to,q);
+    const q=mailbox.get(b.to)||[]; q.push({from:b.from,envelope:b.envelope,ts:Number(b.ts)||Date.now()}); mailbox.set(b.to,q);
     return send(res,200,{queued:true}); }
 
   if(req.method==="POST" && p==="/fetch"){ const b=await body(req);
