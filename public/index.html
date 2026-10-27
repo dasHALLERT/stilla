@@ -151,6 +151,29 @@
   .post .likeinfo{font-size:.78rem;color:var(--muted);margin-left:auto}
   .post .cap{padding:0 12px 12px;font-size:.9rem}
   .feed .empty b{color:var(--fg)}
+  /* Instagram-Raster */
+  .feedgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:3px 0}
+  .tile{position:relative;aspect-ratio:1/1;overflow:hidden;background:var(--s2);cursor:pointer}
+  .tile img,.tile video{width:100%;height:100%;object-fit:cover;display:block}
+  .tile .vhint{position:absolute;top:6px;right:7px;color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7))}
+  .tile .vhint svg{width:16px;height:16px;fill:#fff}
+  .tile .likebadge{position:absolute;left:5px;bottom:5px;color:#fff;font-size:.72rem;background:rgba(0,0,0,.45);padding:1px 7px;border-radius:999px}
+  /* Beitrag-Popup */
+  .postview{position:absolute;inset:0;z-index:60;background:rgba(3,6,10,.95);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+  .postview.on{display:flex}
+  .postview .x{position:absolute;top:14px;right:18px;background:none;border:none;color:#fff;font-size:1.6rem;width:auto;cursor:pointer;z-index:2}
+  .pvcard{width:100%;max-width:460px;max-height:100%;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+  .pvhead{display:flex;align-items:center;gap:10px;color:#fff}
+  .pvhead .av{width:36px;height:36px}
+  .pvhead .pn{font-weight:600;font-size:.95rem}
+  .pvhead .pt{font-size:.72rem;color:#aab4c0}
+  .pvmedia{background:#000;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .pvmedia img,.pvmedia video{width:100%;max-height:60vh;object-fit:contain;display:block}
+  .pvact{display:flex;gap:8px;flex-wrap:wrap}
+  .pvact .react{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:7px 11px;font-size:1.05rem;cursor:pointer;width:auto;line-height:1}
+  .pvact .react:hover{border-color:var(--accent)}
+  .pvlikes{color:#dfe6ec;font-size:.86rem}
+  .pvcap{color:#fff;font-size:.92rem}
 
   /* Aktionsmenü (Langdruck) */
   #menu{position:absolute;inset:0;z-index:55;background:rgba(5,8,12,.55);display:none;align-items:flex-end;justify-content:center}
@@ -311,6 +334,7 @@
   </div>
 
   <div class="lightbox" id="lightbox"><button class="x" data-lbclose>✕</button><img id="lbImg" alt="" style="display:none"><video id="lbVid" controls playsinline style="display:none"></video></div>
+  <div class="postview" id="postview"><button class="x" data-pvclose>✕</button><div class="pvcard" id="pvCard"></div></div>
   <input type="file" id="storyFile" accept="image/*" style="display:none">
   <div id="menu"><div class="mcard" id="menuCard"></div></div>
   <div class="toast" id="toast"></div>
@@ -679,27 +703,41 @@ function renderFeed(medium){
   const box=$("#feed"+(medium==="pic"?"Pic":"Clip"));if(!box)return;box.innerHTML="";
   const f=feedOf(medium);
   if(!f.length){box.innerHTML='<div class="empty">Noch nichts hier.<br>Tipp auf <b>+</b> und teile '+(medium==="pic"?"ein Bild":"einen Clip")+' – nur deine Kontakte sehen es.</div>';return;}
+  const grid=document.createElement("div");grid.className="feedgrid";
   f.forEach(post=>{
-    const el=document.createElement("div");el.className="post";
-    const head=document.createElement("div");head.className="ph";
-    const av=document.createElement("div");av.className="av";setAv(av,post);
-    const who=(post.owner===me.number)?"Du":(post.name||("Nummer "+fmt(post.owner)));
-    const hi=document.createElement("div");hi.innerHTML=`<div class="pn">${esc(who)}</div><div class="pt">${timeAgo(post.ts)}</div>`;
-    head.appendChild(av);head.appendChild(hi);
-    const media=document.createElement("div");media.className="media";
-    if(medium==="pic"){const img=document.createElement("img");img.src=post.data;img.onclick=()=>openLightbox("img",post.data);media.appendChild(img);}
-    else{const v=document.createElement("video");v.src=post.data;v.controls=true;v.playsInline=true;media.appendChild(v);}
-    const act=document.createElement("div");act.className="act";
-    REACTS.forEach(em=>{const b=document.createElement("button");b.className="react";b.textContent=em;b.onclick=()=>reactTo(medium,post,em);act.appendChild(b);});
+    const t=document.createElement("div");t.className="tile";
+    if(medium==="pic"){const img=document.createElement("img");img.src=post.data;img.alt="";t.appendChild(img);}
+    else{const v=document.createElement("video");v.src=post.data;v.muted=true;v.playsInline=true;v.preload="metadata";t.appendChild(v);
+      const h=document.createElement("div");h.className="vhint";h.innerHTML='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';t.appendChild(h);}
     const likes=post.likes||{};const cnt=Object.keys(likes).length;
-    const info=document.createElement("span");info.className="likeinfo";
-    if(cnt){info.textContent=[...new Set(Object.values(likes))].slice(0,4).join("")+" "+cnt;}
-    act.appendChild(info);
-    el.appendChild(head);el.appendChild(media);el.appendChild(act);
-    if(post.text){const c=document.createElement("div");c.className="cap";c.textContent=post.text;el.appendChild(c);}
-    box.appendChild(el);
+    if(cnt){const bd=document.createElement("div");bd.className="likebadge";bd.textContent=[...new Set(Object.values(likes))].slice(0,2).join("")+(cnt>1?(" "+cnt):"");t.appendChild(bd);}
+    t.onclick=()=>openPost(medium,post.id);
+    grid.appendChild(t);
   });
+  box.appendChild(grid);
 }
+
+/* Beitrag groß als Pop-up (mit Reaktionen) */
+function openPost(medium,id){
+  const post=feedOf(medium).find(p=>p.id===id);if(!post)return;
+  const card=$("#pvCard");card.innerHTML="";
+  const head=document.createElement("div");head.className="pvhead";
+  const av=document.createElement("div");av.className="av";setAv(av,post);
+  const who=(post.owner===me.number)?"Du":(post.name||("Nummer "+fmt(post.owner)));
+  const hi=document.createElement("div");hi.innerHTML=`<div class="pn">${esc(who)}</div><div class="pt">${timeAgo(post.ts)}</div>`;
+  head.appendChild(av);head.appendChild(hi);
+  const media=document.createElement("div");media.className="pvmedia";
+  if(medium==="pic"){const img=document.createElement("img");img.src=post.data;media.appendChild(img);}
+  else{const v=document.createElement("video");v.src=post.data;v.controls=true;v.playsInline=true;v.autoplay=true;media.appendChild(v);}
+  const act=document.createElement("div");act.className="pvact";
+  REACTS.forEach(em=>{const b=document.createElement("button");b.className="react";b.textContent=em;b.onclick=()=>{reactTo(medium,post,em);openPost(medium,id);};act.appendChild(b);});
+  const likes=post.likes||{};const cnt=Object.keys(likes).length;
+  card.appendChild(head);card.appendChild(media);card.appendChild(act);
+  if(cnt){const info=document.createElement("div");info.className="pvlikes";info.textContent=[...new Set(Object.values(likes))].join(" ")+"  ·  "+cnt;card.appendChild(info);}
+  if(post.text){const c=document.createElement("div");c.className="pvcap";c.textContent=post.text;card.appendChild(c);}
+  $("#postview").classList.add("on");
+}
+function closePost(){const v=$("#pvCard video");if(v){try{v.pause();}catch{}}$("#postview").classList.remove("on");$("#pvCard").innerHTML="";}
 
 async function addStory(file){
   try{const data=await shrinkImage(file);const ts=Date.now();const id=me.number+"-"+ts;
@@ -850,6 +888,8 @@ $("#chatFile").onchange=e=>{sendFiles(e.target.files);e.target.value="";};
 $("#lbImg").onclick=closeLightbox;
 document.querySelectorAll("[data-lbclose]").forEach(b=>b.onclick=closeLightbox);
 $("#lightbox").onclick=e=>{if(e.target.id==="lightbox")closeLightbox();};
+document.querySelectorAll("[data-pvclose]").forEach(b=>b.onclick=closePost);
+$("#postview").onclick=e=>{if(e.target.id==="postview")closePost();};
 $("#menu").onclick=e=>{if(e.target.id==="menu")closeMenu();};
 
 /* Reiter P1CZ / CL1PZ + Stories */
