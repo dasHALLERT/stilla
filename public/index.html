@@ -173,7 +173,21 @@
   .pvact .react{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:7px 11px;font-size:1.05rem;cursor:pointer;width:auto;line-height:1}
   .pvact .react:hover{border-color:var(--accent)}
   .pvlikes{color:#dfe6ec;font-size:.86rem}
-  .pvcap{color:#fff;font-size:.92rem}
+  .pvtitle{color:#fff;font-weight:600;font-size:1rem}
+  .pvcap{color:#dfe6ec;font-size:.92rem;white-space:pre-wrap}
+  /* Hochlade-Dialog */
+  .composer{position:absolute;inset:0;z-index:62;background:rgba(5,8,12,.8);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;padding:16px}
+  .composer.on{display:flex}
+  .compcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:100%;max-width:440px;max-height:100%;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .comphead{display:flex;align-items:center;justify-content:space-between}
+  .comphead span{font-family:Georgia,serif;font-weight:600;font-size:1.1rem}
+  .comphead .x{background:none;border:none;color:var(--muted);font-size:1.3rem;width:auto;cursor:pointer}
+  .compprev{background:#000;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:120px}
+  .compprev img,.compprev video{width:100%;max-height:44vh;object-fit:contain;display:block}
+  .compprev .wait{color:var(--muted);font-size:.86rem;padding:28px}
+  .composer textarea{width:100%;background:var(--s2);border:1px solid var(--line);border-radius:11px;padding:11px 14px;color:var(--fg);font-size:.95rem;font-family:inherit;resize:none;min-height:70px}
+  .compcount{text-align:right;font-size:.72rem;color:var(--muted);margin-top:-4px}
+  .composer button:disabled{opacity:.5;cursor:default}
 
   /* Aktionsmenü (Langdruck) */
   #menu{position:absolute;inset:0;z-index:55;background:rgba(5,8,12,.55);display:none;align-items:flex-end;justify-content:center}
@@ -335,6 +349,17 @@
 
   <div class="lightbox" id="lightbox"><button class="x" data-lbclose>✕</button><img id="lbImg" alt="" style="display:none"><video id="lbVid" controls playsinline style="display:none"></video></div>
   <div class="postview" id="postview"><button class="x" data-pvclose>✕</button><div class="pvcard" id="pvCard"></div></div>
+  <div class="composer" id="composer">
+    <div class="compcard">
+      <div class="comphead"><span id="compHeadTitle">Teilen</span><button class="x" id="compX">✕</button></div>
+      <div class="compprev" id="compPrev"></div>
+      <input id="compTitle" placeholder="Titel (optional)" maxlength="60" autocomplete="off">
+      <textarea id="compDesc" placeholder="Beschreibung… (optional)" maxlength="250"></textarea>
+      <div class="compcount"><span id="compCount">0</span>/250</div>
+      <label class="switch"><span>Auch zu meiner Story hinzufügen</span><input type="checkbox" id="compStory"><span class="sw"></span></label>
+      <button id="compShare">Teilen</button>
+    </div>
+  </div>
   <input type="file" id="storyFile" accept="image/*" style="display:none">
   <div id="menu"><div class="mcard" id="menuCard"></div></div>
   <div class="toast" id="toast"></div>
@@ -631,8 +656,8 @@ async function fetchLoop(){
       lg2.forEach(x=>{if(isMine(x)&&x.ts<=att.ref){if(att.t==="delivered"&&(x.st||1)<2){x.st=2;ch=true;}if(att.t==="read"&&(x.st||1)<3){x.st=3;x.readAt=Date.now();ch=true;}}});
       if(ch){saveLog(from,lg2);if(peer&&peer.number===from)renderThread(from);} continue; }
     if(att&&att.kind==="del"){ const lg2=logOf(from).filter(x=>x.ts!==att.ref);saveLog(from,lg2);if(peer&&peer.number===from)renderThread(from);changed=true; continue; }
-    if(att&&att.kind==="post"){ addPostLocal(att.medium,{id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,medium:att.medium,mime:att.mime,data:att.data,text:att.text||"",ts:att.ts||m.ts||Date.now(),likes:{}}); feedTouched[att.medium]=true; continue; }
-    if(att&&att.kind==="story"){ const a2=storiesAll(); if(!a2.some(s=>s.id===att.id)){a2.unshift({id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,data:att.data,ts:att.ts||m.ts||Date.now()}); saveStories(a2); storiesTouched=true;} continue; }
+    if(att&&att.kind==="post"){ addPostLocal(att.medium,{id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,medium:att.medium,mime:att.mime,data:att.data,title:att.title||"",text:att.text||"",ts:att.ts||m.ts||Date.now(),likes:{}}); feedTouched[att.medium]=true; continue; }
+    if(att&&att.kind==="story"){ const a2=storiesAll(); if(!a2.some(s=>s.id===att.id)){a2.unshift({id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,data:att.data,mime:att.mime||"image/jpeg",ts:att.ts||m.ts||Date.now()}); saveStories(a2); storiesTouched=true;} continue; }
     if(att&&att.kind==="reaction"){
       const f=feedOf(att.medium);const it=f.find(x=>x.id===att.postId); if(it){it.likes=it.likes||{};it.likes[from]=att.emoji;saveFeed(att.medium,f);feedTouched[att.medium]=true;}
       const txt=att.emoji+" hat auf deinen "+(att.medium==="pic"?"Beitrag":"Clip")+" reagiert";
@@ -675,18 +700,49 @@ async function fanout(att){
   return nums.length;
 }
 
-async function postMedia(medium,file){
+/* Medium aus Datei vorbereiten -> {data,mime} (oder null bei Fehler/zu groß) */
+async function prepareMedia(medium,file){
+  if(medium==="pic"){
+    if(file.type==="image/gif"){ if(file.size>MAX_VIDEO){toast('"'+file.name+'" ist zu groß (max '+fmtSize(MAX_VIDEO)+').');return null;} return {data:await fileToDataURL(file),mime:"image/gif"}; }
+    return {data:await shrinkImage(file),mime:"image/jpeg"};
+  }
+  if(file.size>MAX_VIDEO){toast("Clip ist zu groß (max "+fmtSize(MAX_VIDEO)+" im Test).");return null;}
+  return {data:await fileToDataURL(file),mime:file.type||"video/mp4"};
+}
+async function publishPost(medium,prep,title,text,toStory){
   try{
-    let data;
-    if(medium==="pic"){data=await shrinkImage(file);}
-    else{if(file.size>MAX_VIDEO){toast("Clip ist zu groß (max "+fmtSize(MAX_VIDEO)+" im Test).");return;}data=await fileToDataURL(file);}
     const ts=Date.now();const id=me.number+"-"+ts+"-"+Math.random().toString(36).slice(2,7);
-    const mime=medium==="pic"?"image/jpeg":(file.type||"video/mp4");
-    addPostLocal(medium,{id,owner:me.number,name:me.name,avatar:me.avatar||"",medium,mime,data,ts,likes:{}});
+    addPostLocal(medium,{id,owner:me.number,name:me.name,avatar:me.avatar||"",medium,mime:prep.mime,data:prep.data,title:title||"",text:text||"",ts,likes:{}});
     renderFeed(medium);
-    const n=await fanout({kind:"post",medium,id,owner:me.number,name:me.name,avatar:me.avatar||"",mime,data,ts});
-    toast(n?("Geteilt mit "+n+(n===1?" Kontakt":" Kontakten")):"Noch keine Kontakte — füge jemanden hinzu.");
+    const n=await fanout({kind:"post",medium,id,owner:me.number,name:me.name,avatar:me.avatar||"",mime:prep.mime,data:prep.data,title:title||"",text:text||"",ts});
+    if(toStory) await shareStoryData(prep.data,prep.mime);
+    toast(n?("Geteilt mit "+n+(n===1?" Kontakt":" Kontakten")+(toStory?" + Story":"")):"Noch keine Kontakte — füge jemanden hinzu.");
   }catch(e){toast((e&&e.message)||"Konnte nicht posten.");}
+}
+
+/* Hochlade-Dialog (Titel, Beschreibung, optional Story) */
+let compPrep=null,compMedium=null;
+async function openComposer(medium,file){
+  compMedium=medium;compPrep=null;
+  $("#compHeadTitle").textContent=(medium==="pic"?"Bild teilen":"Clip teilen");
+  $("#compTitle").value="";$("#compDesc").value="";$("#compCount").textContent="0";$("#compStory").checked=false;
+  const prev=$("#compPrev");prev.innerHTML='<div class="wait">wird vorbereitet…</div>';
+  $("#compShare").disabled=true;$("#composer").classList.add("on");
+  try{
+    const prep=await prepareMedia(medium,file);
+    if(!prep){closeComposer();return;}
+    compPrep=prep;prev.innerHTML="";
+    if(medium==="pic"){const img=document.createElement("img");img.src=prep.data;prev.appendChild(img);}
+    else{const v=document.createElement("video");v.src=prep.data;v.controls=true;v.playsInline=true;prev.appendChild(v);}
+    $("#compShare").disabled=false;
+  }catch(e){toast((e&&e.message)||"Datei konnte nicht geladen werden.");closeComposer();}
+}
+function closeComposer(){const v=$("#compPrev video");if(v){try{v.pause();}catch{}}$("#composer").classList.remove("on");$("#compPrev").innerHTML="";compPrep=null;compMedium=null;}
+async function doShare(){
+  if(!compPrep||!compMedium)return;
+  const title=$("#compTitle").value.trim(),desc=$("#compDesc").value.trim(),toStory=$("#compStory").checked;
+  const medium=compMedium,prep=compPrep;closeComposer();
+  await publishPost(medium,prep,title,desc,toStory);
 }
 
 async function reactTo(medium,post,emoji){
@@ -734,19 +790,23 @@ function openPost(medium,id){
   const likes=post.likes||{};const cnt=Object.keys(likes).length;
   card.appendChild(head);card.appendChild(media);card.appendChild(act);
   if(cnt){const info=document.createElement("div");info.className="pvlikes";info.textContent=[...new Set(Object.values(likes))].join(" ")+"  ·  "+cnt;card.appendChild(info);}
+  if(post.title){const ti=document.createElement("div");ti.className="pvtitle";ti.textContent=post.title;card.appendChild(ti);}
   if(post.text){const c=document.createElement("div");c.className="pvcap";c.textContent=post.text;card.appendChild(c);}
   $("#postview").classList.add("on");
 }
 function closePost(){const v=$("#pvCard video");if(v){try{v.pause();}catch{}}$("#postview").classList.remove("on");$("#pvCard").innerHTML="";}
 
-async function addStory(file){
-  try{const data=await shrinkImage(file);const ts=Date.now();const id=me.number+"-"+ts;
-    const a=storiesAll();a.unshift({id,owner:me.number,name:me.name,avatar:me.avatar||"",data,ts});saveStories(a);renderStories();
-    const n=await fanout({kind:"story",id,owner:me.number,name:me.name,avatar:me.avatar||"",data,ts});
+async function shareStoryData(data,mime){
+  const ts=Date.now();const id=me.number+"-"+ts;
+  const a=storiesAll();a.unshift({id,owner:me.number,name:me.name,avatar:me.avatar||"",data,mime:mime||"image/jpeg",ts});saveStories(a);renderStories();
+  return await fanout({kind:"story",id,owner:me.number,name:me.name,avatar:me.avatar||"",data,mime:mime||"image/jpeg",ts});
+}
+async function addStory(file){   // vom Story-"+" (nur Bild)
+  try{const data=await shrinkImage(file);const n=await shareStoryData(data,"image/jpeg");
     toast(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte.");
   }catch(e){toast((e&&e.message)||"Story konnte nicht erstellt werden.");}
 }
-function viewStories(owner){const g=storiesAll().filter(s=>s.owner===owner).sort((a,b)=>b.ts-a.ts);if(g.length)openLightbox("img",g[0].data);}
+function viewStories(owner){const g=storiesAll().filter(s=>s.owner===owner).sort((a,b)=>b.ts-a.ts);if(!g.length)return;const s=g[0];openLightbox((s.mime||"").startsWith("video/")?"vid":"img",s.data);}
 function renderStories(){
   const items=storiesAll();const groups={};items.forEach(s=>{(groups[s.owner]=groups[s.owner]||[]).push(s);});
   document.querySelectorAll(".stories").forEach(strip=>{
@@ -895,9 +955,13 @@ $("#menu").onclick=e=>{if(e.target.id==="menu")closeMenu();};
 /* Reiter P1CZ / CL1PZ + Stories */
 document.querySelectorAll("[data-tabs] button").forEach(b=>b.onclick=()=>go(b.dataset.go));
 $("#fabPic").onclick=()=>$("#picFile").click();
-$("#picFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)postMedia("pic",f);e.target.value="";};
+$("#picFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)openComposer("pic",f);e.target.value="";};
 $("#fabClip").onclick=()=>$("#clipFile").click();
-$("#clipFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)postMedia("clip",f);e.target.value="";};
+$("#clipFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)openComposer("clip",f);e.target.value="";};
+$("#compX").onclick=closeComposer;
+$("#composer").onclick=e=>{if(e.target.id==="composer")closeComposer();};
+$("#compShare").onclick=doShare;
+$("#compDesc").addEventListener("input",()=>{$("#compCount").textContent=$("#compDesc").value.length;});
 $("#storyFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)addStory(f);e.target.value="";};
 $("#picAv").onclick=openSettings;$("#clipAv").onclick=openSettings;
 
