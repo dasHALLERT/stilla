@@ -48,6 +48,38 @@ function pushTo(number){
 function send(res,code,obj){ res.writeHead(code,{"Content-Type":"application/json"}); res.end(JSON.stringify(obj)); }
 function body(req){ return new Promise(r=>{let d="";req.on("data",c=>d+=c);req.on("end",()=>{try{r(JSON.parse(d||"{}"));}catch{r({});}});}); }
 
+/* ---------- E-Mail-Bestätigung (Resend) ---------- */
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const APP_URL        = process.env.APP_URL || "https://stilla-h5v4.onrender.com";
+const MAIL_FROM      = process.env.MAIL_FROM || "stilla <onboarding@resend.dev>";   // nach Domain-Verifizierung: noreply@getstilla.me
+const VERIFY_SECRET  = process.env.VERIFY_SECRET || crypto.randomBytes(32).toString("hex");  // ideal per ENV
+const b64url = b => Buffer.from(b).toString("base64").replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+function signData(s){ return crypto.createHmac("sha256",VERIFY_SECRET).update(s).digest("base64").replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function makeToken(number){ const p=number+"."+(Date.now()+48*3600*1000); return b64url(p)+"."+signData(p); }
+function checkToken(tok){ try{ const i=tok.lastIndexOf("."); const b=tok.slice(0,i), sig=tok.slice(i+1);
+  const p=Buffer.from(b.replace(/-/g,"+").replace(/_/g,"/"),"base64").toString();
+  if(signData(p)!==sig) return null; const [number,exp]=p.split("."); if(Date.now()>Number(exp)) return null; return number;
+}catch{ return null; } }
+const validEmail = e => typeof e==="string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e.length<=120;
+async function sendVerifyMail(email,number){
+  if(!RESEND_API_KEY) return {ok:false,error:"email-disabled"};
+  const link=APP_URL+"/?verify="+encodeURIComponent(makeToken(number));
+  const html=`<div style="font-family:system-ui,sans-serif;background:#10151e;color:#e8eef3;padding:28px;border-radius:14px;max-width:460px;margin:auto">
+    <h2 style="font-family:Georgia,serif;color:#e8eef3">stilla</h2>
+    <p>Bitte bestätige deine E-Mail-Adresse, damit dein Account und deine Nummer erhalten bleiben.</p>
+    <p><a href="${link}" style="display:inline-block;background:#7cc3bb;color:#07201d;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:10px">E-Mail bestätigen</a></p>
+    <p style="color:#8798a8;font-size:13px">Oder diesen Link öffnen:<br>${link}</p>
+    <p style="color:#8798a8;font-size:12px">Der Link gilt 48 Stunden. Wenn du das nicht warst, ignoriere diese E-Mail.</p>
+  </div>`;
+  try{
+    const r=await fetch("https://api.resend.com/emails",{method:"POST",
+      headers:{"Authorization":"Bearer "+RESEND_API_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({from:MAIL_FROM,to:[email],subject:"stilla – E-Mail bestätigen",html,text:"Bestätige deine E-Mail für stilla: "+link})});
+    if(r.ok) return {ok:true};
+    const t=await r.text(); console.log("Resend-Fehler",r.status,t); return {ok:false,error:"send-failed",status:r.status};
+  }catch(e){ console.log("Resend-Exception",e.message); return {ok:false,error:"send-exception"}; }
+}
+
 // Login: Ed25519-Signatur per TweetNaCl prüfen (passt zum Client auf jedem Gerät)
 function verifyLogin(signPubB64, nonce, sigB64){
   try{
@@ -72,6 +104,16 @@ const server = http.createServer(async (req,res)=>{
 
   // Push-Subscription speichern (für Benachrichtigungen)
   if(req.method==="POST" && p==="/subscribe"){ const b=await body(req); if(b.number&&b.subscription) pushSubs.set(b.number,b.subscription); return send(res,200,{ok:true}); }
+
+  // E-Mail-Bestätigung anfordern: schickt eine Mail mit Bestätigungslink
+  if(req.method==="POST" && p==="/verify/request"){ const b=await body(req);
+    if(!b.number||!validEmail(b.email)) return send(res,400,{error:"bad-input"});
+    const r=await sendVerifyMail(b.email.trim(),b.number);
+    return send(res, r.ok?200:502, r); }
+
+  // Bestätigungslink prüfen: gibt die zugehörige Nummer zurück (stateless, per HMAC)
+  if(req.method==="POST" && p==="/verify/check"){ const b=await body(req);
+    const number=checkToken(b.token||""); return number?send(res,200,{ok:true,number}):send(res,200,{ok:false}); }
 
   if(req.method==="POST" && p==="/register"){ const b=await body(req);
     if(!b.signPub||!b.kexPub) return send(res,400,{error:"keys missing"});

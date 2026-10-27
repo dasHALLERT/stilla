@@ -17,6 +17,13 @@
   html{overflow:hidden}
   body{background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,"Segoe UI",sans-serif;line-height:1.5;position:fixed;inset:0;overflow:hidden;overscroll-behavior:none}
   #app{max-width:520px;margin:0 auto;height:100%;position:relative;display:flex;flex-direction:column}
+  #app.hasbanner{padding-top:46px}
+  .vbanner{position:absolute;top:0;left:0;right:0;height:46px;background:var(--bad);color:#2a0b0b;display:none;align-items:center;justify-content:center;gap:6px;z-index:60;font-size:.8rem;font-weight:700;padding:6px 12px;cursor:pointer;text-align:center;line-height:1.2}
+  .vbanner.on{display:flex}
+  .vlock{position:absolute;inset:0;z-index:90;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:28px;text-align:center}
+  .vlock.on{display:flex}
+  .vlock h2{font-family:Georgia,serif;font-weight:600;margin:0}
+  .vlock input{max-width:300px}.vlock button{max-width:300px}
   .view{position:absolute;inset:0;display:none;flex-direction:column;padding:0 14px}
   .view.on{display:flex}
   input{width:100%;background:var(--s2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;color:var(--fg);font-size:.95rem}
@@ -311,6 +318,15 @@
 <svg width="0" height="0" style="position:absolute"><symbol id="mark" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#g)" stroke="#2a3647" stroke-width="1.5"/><g fill="#7cc3bb"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></symbol></svg>
 
 <div id="app">
+  <div class="vbanner" id="vbanner"></div>
+  <div class="vlock" id="vlock">
+    <span class="logo"><svg><use href="#mark"/></svg></span>
+    <h2>Account bestätigen</h2>
+    <p class="sub" style="max-width:32ch">Die 48 Stunden sind um. Bestätige deine E-Mail, um stilla weiter zu nutzen – sonst wird die Nummer wieder freigegeben.</p>
+    <input id="lockEmail" type="email" placeholder="deine@email.de" autocomplete="email" style="max-width:300px">
+    <button id="lockSend" style="max-width:300px">Bestätigungs-E-Mail senden</button>
+    <p class="sub" id="lockHint" style="font-size:.74rem"></p>
+  </div>
 
   <!-- ONBOARDING -->
   <div class="view on" id="auth">
@@ -422,6 +438,14 @@
       <div class="card" id="setNumCard" style="margin-top:10px;cursor:pointer;text-align:center">
         <div class="sub">Deine Nummer · zum Kopieren tippen</div>
         <div class="mynum" id="setMyNum" style="font-size:1.3rem;margin-top:6px">—</div>
+      </div>
+
+      <div class="setlbl">KONTO</div>
+      <div class="card" id="verCard" style="margin-top:4px">
+        <div id="verStatus" style="font-weight:600">—</div>
+        <input id="setEmail" type="email" placeholder="deine@email.de" autocomplete="email" style="margin-top:10px">
+        <button id="verSend" style="margin-top:10px">Bestätigungs-E-Mail senden</button>
+        <p class="sub" style="font-size:.74rem;margin:8px 0 0">Innerhalb von 48 h bestätigen, sonst wird die Nummer wieder freigegeben. Absender: stilla.</p>
       </div>
 
       <div class="setlbl">STATUS</div>
@@ -652,7 +676,7 @@ async function createProfile(){
     const id=newIdentity(name);
     const reg=await api("/register","POST",{signPub:id.signPub,kexPub:id.kexPub,name});
     if(!reg||!reg.number) throw new Error("Server antwortet gerade nicht — kurz warten, erneut.");
-    me={number:reg.number,...id}; LS.set("stilla_me",me);
+    me={number:reg.number,...id,createdAt:Date.now(),verified:false,email:""}; LS.set("stilla_me",me);
     startApp();
   }catch(e){err.textContent=(e&&e.message)||"Es ist etwas schiefgegangen.";}
 }
@@ -1287,11 +1311,60 @@ async function refreshPresence(){
   }catch{}
 }
 
+/* ---------- E-Mail-Bestätigung ---------- */
+const VERIFY_MS=48*3600*1000;
+let verTimer=null;
+function verExpiry(){return (me&&me.createdAt?me.createdAt:Date.now())+VERIFY_MS;}
+function verFmtLeft(ms){if(ms<=0)return"0 m";const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);return h>0?(h+" h "+m+" m"):(m+" m");}
+function renderBanner(){
+  const bn=$("#vbanner"),app=$("#app"),lock=$("#vlock");if(!me){return;}
+  if(me.verified){bn.classList.remove("on");app.classList.remove("hasbanner");lock.classList.remove("on");return;}
+  const left=verExpiry()-Date.now();
+  if(left<=0){bn.classList.remove("on");app.classList.remove("hasbanner");$("#lockEmail").value=me.email||"";lock.classList.add("on");return;}
+  lock.classList.remove("on");
+  bn.innerHTML="⚠ E-Mail bestätigen · noch "+verFmtLeft(left)+" · <u>jetzt</u>";
+  bn.classList.add("on");app.classList.add("hasbanner");
+}
+function startBannerTimer(){if(verTimer)clearInterval(verTimer);renderBanner();verTimer=setInterval(renderBanner,60000);}
+async function requestVerify(email,hintEl){
+  email=(email||"").trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){const m="Bitte eine gültige E-Mail eingeben.";hintEl?hintEl.textContent=m:toast(m);return;}
+  me.email=email;LS.set("stilla_me",me);
+  if(hintEl)hintEl.textContent="Sende…";
+  let r;try{r=await api("/verify/request","POST",{number:me.number,email});}catch{r=null;}
+  let m;
+  if(r&&r.ok)m="E-Mail an "+email+" gesendet – Posteingang (ggf. Spam) prüfen und Link öffnen.";
+  else if(r&&r.error==="email-disabled")m="E-Mail-Versand ist serverseitig noch nicht aktiv.";
+  else m="Versand gerade nicht möglich – später erneut.";
+  hintEl?hintEl.textContent=m:toast(m);
+}
+async function handleVerifyLink(){
+  const u=new URL(location.href);const tok=u.searchParams.get("verify");if(!tok)return;
+  try{const r=await api("/verify/check","POST",{token:tok});
+    if(r&&r.ok){ if(me&&r.number===me.number){me.verified=true;LS.set("stilla_me",me);toast("E-Mail bestätigt ✓");renderBanner();} else toast("Bestätigt – bitte auf dem Gerät mit diesem Account öffnen."); }
+    else toast("Bestätigungslink ungültig oder abgelaufen.");
+  }catch{}
+  u.searchParams.delete("verify");history.replaceState(null,"",u.pathname+u.search+u.hash);
+}
+function fillVerCard(){
+  const s=$("#verStatus");
+  if(me.verified){s.textContent="✓ E-Mail bestätigt";s.style.color="var(--accent)";}
+  else{const left=verExpiry()-Date.now();s.textContent=left>0?("⏳ Unbestätigt · noch "+verFmtLeft(left)):"⚠ Abgelaufen – bitte bestätigen";s.style.color="var(--bad)";}
+  $("#setEmail").value=me.email||"";
+  $("#verSend").style.display=me.verified?"none":"";$("#setEmail").style.display=me.verified?"none":"";
+}
+
 function startApp(){
   migrateMine();
+  if(me.createdAt===undefined)me.createdAt=Date.now();
+  if(me.verified===undefined)me.verified=false;
+  if(me.email===undefined)me.email="";
+  LS.set("stilla_me",me);
   setAv($("#homeAv"),me);$("#sheetNum").textContent=fmt(me.number);
   go("home");
   ensureRegistered();
+  handleVerifyLink();
+  startBannerTimer();
   if(poll)clearInterval(poll);
   fetchLoop(); poll=setInterval(fetchLoop,2500);
   if(pres)clearInterval(pres);
@@ -1327,7 +1400,7 @@ function openSettings(){
   $("#optAutodel").checked=autodelOn();
   $("#optInvis").checked=invisibleOn();
   markTheme(LS.get("stilla_theme","dunkel"));
-  buildAccents();updateNotifBtn();
+  buildAccents();updateNotifBtn();fillVerCard();
   show("settings");
 }
 async function saveSettings(){
@@ -1404,6 +1477,9 @@ $("#bgPick").onclick=()=>$("#bgFile").click();
 $("#bgFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];if(f){try{const d=await shrinkImage(f);LS.set("stilla_chatbg",d);applyChatBg();toast("Chat-Hintergrund gesetzt ✓");}catch(err){toast("Bild konnte nicht geladen werden.");}}e.target.value="";};
 $("#bgClear").onclick=()=>{LS.set("stilla_chatbg","");applyChatBg();toast("Hintergrund entfernt");};
 $("#notifBtn").onclick=enableNotifications;
+$("#verSend").onclick=async()=>{await requestVerify($("#setEmail").value,null);fillVerCard();};
+$("#lockSend").onclick=()=>requestVerify($("#lockEmail").value,$("#lockHint"));
+$("#vbanner").onclick=openSettings;
 
 /* Datei/Bild im Chat */
 $("#clipBtn").onclick=()=>$("#chatFile").click();
