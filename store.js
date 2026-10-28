@@ -14,10 +14,12 @@ const crypto = require("node:crypto");
 
 /* ---------- Arbeitsspeicher-Variante ---------- */
 function memStore(){
-  const directory=new Map(), mailbox=new Map(), subs=new Map();
+  const directory=new Map(), mailbox=new Map(), subs=new Map(), backups=new Map();
   return {
     kind:"memory",
     async init(){},
+    async setBackup(n,blob){ backups.set(n,blob); },
+    async getBackup(n){ return backups.get(n)||null; },
     async getIdentity(n){ return directory.get(n)?{...directory.get(n)}:null; },
     async hasIdentity(n){ return directory.has(n); },
     async setVerified(n){ const e=directory.get(n); if(e){ e.verified=true; directory.set(n,e); return true; } return false; },
@@ -69,7 +71,15 @@ function pgStore(Pool, connectionString){
         to_number TEXT, from_number TEXT, envelope TEXT, ts BIGINT)`);
       try{ await q(`CREATE INDEX IF NOT EXISTS mailbox_to ON mailbox(to_number)`); }catch(_){}
       await q(`CREATE TABLE IF NOT EXISTS push_subs(number TEXT PRIMARY KEY, sub TEXT)`);
+      // Mit Passwort verschlüsselte Schlüssel-Sicherung (für Login auf neuen Geräten).
+      // Der Server speichert nur den undurchsichtigen, verschlüsselten Block.
+      await q(`CREATE TABLE IF NOT EXISTS backups(number TEXT PRIMARY KEY, blob TEXT, updated_at BIGINT)`);
     },
+    async setBackup(n,blob){
+      await q(`INSERT INTO backups(number,blob,updated_at) VALUES($1,$2,$3)
+        ON CONFLICT (number) DO UPDATE SET blob=EXCLUDED.blob, updated_at=EXCLUDED.updated_at`,[n,blob,Date.now()]);
+    },
+    async getBackup(n){ const r=await q(`SELECT blob FROM backups WHERE number=$1`,[n]); return r.rows.length?r.rows[0].blob:null; },
     async getIdentity(n){
       const r=await q(`SELECT sign_pub,kex_pub,name,avatar,status,verified FROM identities WHERE number=$1`,[n]);
       if(!r.rows.length) return null; const x=r.rows[0];

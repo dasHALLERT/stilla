@@ -271,6 +271,7 @@
   .svlike svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:2}
   .svlike.liked svg{fill:#ff5a7a;stroke:#ff5a7a}
   /* Story-Editor (Text/Emoji aufs Bild) */
+  .linkbtn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:.82rem;text-decoration:underline;padding:4px;width:auto}
   .storyedit{position:absolute;inset:0;z-index:68;background:#000;display:none;flex-direction:column}
   .storyedit.on{display:flex}
   .sehead{display:flex;align-items:center;gap:10px;padding:10px 14px;z-index:3}
@@ -367,11 +368,21 @@
   <div class="view on" id="auth">
     <span class="logo"><svg><use href="#mark"/></svg></span>
     <h1>stilla</h1>
-    <p class="sub" style="max-width:30ch">Keine Handynummer. Du bekommst eine eigene 9-stellige Nummer. Schlüssel entstehen auf deinem Gerät.</p>
-    <input class="fld" id="name" placeholder="Dein Name" maxlength="24" autocomplete="off">
-    <button class="fld" id="createBtn" style="max-width:300px">Profil erstellen</button>
+    <p class="sub" style="max-width:32ch">Keine Handynummer – du bekommst eine eigene 9-stellige Nummer. Mit E-Mail & Passwort kannst du dich auf jedem Gerät einloggen. Die E-Mail bestätigst du per Link (48 h).</p>
+    <input class="fld" id="name" placeholder="Dein Name" maxlength="24" autocomplete="name" style="max-width:300px">
+    <input class="fld" id="authEmail" type="email" placeholder="E-Mail-Adresse" autocomplete="email" style="max-width:300px;margin-top:8px">
+    <input class="fld" id="authPw" type="password" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="new-password" style="max-width:300px;margin-top:8px">
+    <button class="fld" id="createBtn" style="max-width:300px;margin-top:10px">Account erstellen</button>
     <div class="err" id="authErr"></div>
-    <p class="sub" style="font-size:.74rem;color:var(--bad)">Test-Version — keine echten Geheimnisse.</p>
+    <button class="linkbtn" id="toLogin" type="button" style="margin-top:4px">Schon eine Nummer? Hier einloggen</button>
+    <div id="loginBox" style="display:none;width:100%;max-width:300px;margin-top:8px">
+      <input class="fld" id="loginNum" inputmode="numeric" placeholder="Deine 9-stellige Nummer" autocomplete="username">
+      <input class="fld" id="loginPw" type="password" placeholder="Passwort" autocomplete="current-password" style="margin-top:8px">
+      <button class="fld" id="loginBtn" style="margin-top:8px;max-width:none">Einloggen</button>
+      <p class="sub" id="loginHint" style="font-size:.74rem;margin-top:6px"></p>
+      <p class="sub" style="font-size:.72rem;margin-top:2px">Passwort richtest du auf dem ersten Gerät ein — nach der E-Mail-Bestätigung (Einstellungen → Konto).</p>
+    </div>
+    <p class="sub" style="font-size:.74rem;color:var(--bad);margin-top:8px">Test-Version — keine echten Geheimnisse.</p>
   </div>
 
   <!-- HOME -->
@@ -481,6 +492,13 @@
         <input id="setEmail" type="email" placeholder="deine@email.de" autocomplete="email" style="margin-top:10px">
         <button id="verSend" style="margin-top:10px">Bestätigungs-E-Mail senden</button>
         <p class="sub" style="font-size:.74rem;margin:8px 0 0">Innerhalb von 48 h bestätigen, sonst wird die Nummer wieder freigegeben. Absender: stilla.</p>
+        <div id="pwBox" style="display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="font-weight:600" id="pwTitle">Passwort für Login auf anderen Geräten</div>
+          <p class="sub" style="font-size:.74rem;margin:4px 0 8px">Damit kannst du dich mit deiner Nummer auf einem neuen Gerät oder in der installierten App einloggen – ohne neue Nummer.</p>
+          <input id="setPw" type="password" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="new-password">
+          <button id="pwSave" style="margin-top:8px">Passwort speichern</button>
+          <p class="sub" id="pwHint" style="font-size:.74rem;margin:8px 0 0"></p>
+        </div>
       </div>
 
       <div class="setlbl">STATUS</div>
@@ -662,6 +680,56 @@ function newIdentity(name){
   const s=nacl.sign.keyPair(), b=nacl.box.keyPair();
   return {name, avatar:"", status:"", signPub:b64(s.publicKey),signSec:b64(s.secretKey), kexPub:b64(b.publicKey),kexSec:b64(b.secretKey)};
 }
+/* ---------- Passwort-Sicherung (Login auf neuen Geräten) ----------
+   Die geheimen Schlüssel werden MIT dem Passwort verschlüsselt und nur als
+   unlesbarer Block auf dem Server abgelegt. Ohne Passwort ist er wertlos. */
+async function deriveKey(password,salt){
+  const km=await crypto.subtle.importKey("raw",enc.encode(password),"PBKDF2",false,["deriveBits"]);
+  const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:150000,hash:"SHA-256"},km,256);
+  return new Uint8Array(bits);
+}
+async function makeBackupBlob(password){
+  const salt=nacl.randomBytes(16),nonce=nacl.randomBytes(24);
+  const key=await deriveKey(password,salt);
+  const payload=JSON.stringify({signSec:me.signSec,signPub:me.signPub,kexSec:me.kexSec,kexPub:me.kexPub,number:me.number,name:me.name||"",email:me.email||""});
+  const ct=nacl.secretbox(enc.encode(payload),nonce,key);
+  return JSON.stringify({v:1,salt:b64(salt),nonce:b64(nonce),ct:b64(ct)});
+}
+async function restoreFromBlob(blobStr,password){
+  try{const o=JSON.parse(blobStr);const key=await deriveKey(password,unb64(o.salt));
+    const pt=nacl.secretbox.open(unb64(o.ct),unb64(o.nonce),key);
+    return pt?JSON.parse(dec.decode(pt)):null;}catch{return null;}
+}
+async function setPassword(pw,hintEl){
+  const say=m=>hintEl?hintEl.textContent=m:toast(m);
+  if(!me){return false;}
+  if(!pw||pw.length<6){say("Passwort mindestens 6 Zeichen.");return false;}
+  say("Speichere…");
+  try{
+    const blob=await makeBackupBlob(pw);
+    const sig=b64(nacl.sign.detached(enc.encode(blob),unb64(me.signSec)));
+    const r=await api("/backup/set","POST",{number:me.number,signPub:me.signPub,signature:sig,blob});
+    if(r&&r.ok){ me.hasPw=true;LS.set("stilla_me",me);say("Passwort gesetzt ✓ – damit kannst du dich auf anderen Geräten einloggen.");if($("#verStatus"))fillVerCard();return true; }
+    if(r&&r.error==="not-verified"){say("Bitte zuerst die E-Mail bestätigen.");return false;}
+    say("Konnte nicht speichern — später erneut.");return false;
+  }catch{ say("Konnte nicht speichern — später erneut.");return false; }
+}
+async function loginWithNumber(num,pw,hintEl){
+  const say=m=>hintEl?hintEl.textContent=m:toast(m);
+  num=(num||"").replace(/\D/g,"");
+  if(num.length!==9){say("Bitte eine 9-stellige Nummer.");return;}
+  if(!pw){say("Bitte dein Passwort eingeben.");return;}
+  say("Melde an…");
+  let r;try{r=await api("/backup?number="+num,"GET");}catch{r=null;}
+  if(!r||!r.blob){say("Für diese Nummer gibt es keinen Login. Auf dem ersten Gerät zuerst ein Passwort einrichten.");return;}
+  const restored=await restoreFromBlob(r.blob,pw);
+  if(!restored||!restored.signSec){say("Passwort falsch.");return;}
+  me={number:restored.number,name:restored.name||"",avatar:"",status:"",signPub:restored.signPub,signSec:restored.signSec,kexPub:restored.kexPub,kexSec:restored.kexSec,createdAt:Date.now(),verified:true,email:restored.email||"",hasPw:true};
+  // Profil (Name/Avatar/Status) vom Server nachladen
+  try{const k=await api("/keys?number="+num,"GET"); if(k&&!k.error){me.name=k.name||me.name;me.avatar=k.avatar||"";me.status=k.status||"";}}catch{}
+  LS.set("stilla_me",me);
+  say("");startApp();
+}
 function encrypt(theirKexPubB64,text){const n=nacl.randomBytes(24);const box=nacl.box(enc.encode(text),n,unb64(theirKexPubB64),unb64(me.kexSec));return {n:b64(n),c:b64(box)};}
 function decrypt(theirKexPubB64,env){const m=nacl.box.open(unb64(env.c),unb64(env.n),unb64(theirKexPubB64),unb64(me.kexSec));return m?dec.decode(m):null;}
 
@@ -706,15 +774,29 @@ function fileEmoji(mime,name){const n=(name||"").toLowerCase();
 /* ---------- Flow ---------- */
 async function createProfile(){
   const err=$("#authErr");err.textContent="";
+  const name=($("#name").value||"").trim();
+  const email=($("#authEmail").value||"").trim();
+  const pw=$("#authPw").value||"";
+  if(!name){err.textContent="Bitte einen Namen eingeben.";return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.textContent="Bitte eine gültige E-Mail eingeben.";return;}
+  if(pw.length<6){err.textContent="Passwort mindestens 6 Zeichen.";return;}
+  const btn=$("#createBtn");btn.disabled=true;
   try{
     if(typeof nacl==="undefined") throw new Error("Krypto-Bibliothek lädt noch — Seite neu laden.");
-    const name=($("#name").value||"").trim()||"anonym";
     const id=newIdentity(name);
     const reg=await api("/register","POST",{signPub:id.signPub,kexPub:id.kexPub,name});
     if(!reg||!reg.number) throw new Error("Server antwortet gerade nicht — kurz warten, erneut.");
-    me={number:reg.number,...id,createdAt:Date.now(),verified:false,email:""}; LS.set("stilla_me",me);
+    me={number:reg.number,...id,createdAt:Date.now(),verified:false,email}; LS.set("stilla_me",me);
+    // Passwort-Sicherung ablegen (ermöglicht Login auf anderen Geräten / in der installierten App)
+    try{ const blob=await makeBackupBlob(pw); const sig=b64(nacl.sign.detached(enc.encode(blob),unb64(me.signSec)));
+      const rb=await api("/backup/set","POST",{number:me.number,signPub:me.signPub,signature:sig,blob});
+      if(rb&&rb.ok){ me.hasPw=true; LS.set("stilla_me",me); } }catch{}
+    // Bestätigungs-E-Mail automatisch senden (48 h)
+    requestVerify(email,null);
+    $("#authPw").value="";
     startApp();
   }catch(e){err.textContent=(e&&e.message)||"Es ist etwas schiefgegangen.";}
+  finally{btn.disabled=false;}
 }
 let regConfirmed=false;
 async function ensureRegistered(){
@@ -1441,6 +1523,8 @@ function fillVerCard(){
   else{const left=verExpiry()-Date.now();s.textContent=left>0?("⏳ Unbestätigt · noch "+verFmtLeft(left)):"⚠ Abgelaufen – bitte bestätigen";s.style.color="var(--bad)";}
   $("#setEmail").value=me.email||"";
   $("#verSend").style.display=me.verified?"none":"";$("#setEmail").style.display=me.verified?"none":"";
+  const pwBox=$("#pwBox"); if(pwBox){ pwBox.style.display="block";
+    $("#pwTitle").textContent=me.hasPw?"Passwort ändern":"Passwort für Login auf anderen Geräten"; }
 }
 
 function startApp(){
@@ -1510,7 +1594,11 @@ async function saveSettings(){
 
 /* ---------- Events ---------- */
 $("#createBtn").onclick=createProfile;
-$("#name").addEventListener("keydown",e=>{if(e.key==="Enter")createProfile();});
+["name","authEmail","authPw"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{if(e.key==="Enter")createProfile();}));
+$("#toLogin").onclick=()=>{const b=$("#loginBox");b.style.display=(b.style.display==="none"?"block":"none");if(b.style.display!=="none")$("#loginNum").focus();};
+$("#loginBtn").onclick=()=>loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));
+$("#loginPw").addEventListener("keydown",e=>{if(e.key==="Enter")loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));});
+$("#pwSave").onclick=async()=>{const ok=await setPassword($("#setPw").value,$("#pwHint"));if(ok)$("#setPw").value="";};
 $("#fab").onclick=()=>{$("#sheetNum").textContent=fmt(me.number);$("#addsheet").classList.add("on");};
 $("#addBtn").onclick=addByNumber;
 $("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")addByNumber();});

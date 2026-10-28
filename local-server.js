@@ -132,6 +132,22 @@ const server = http.createServer(async (req,res)=>{
     if(r.taken) return send(res,409,{taken:true});   // andere Identitaet haelt die Nummer
     return send(res,200,{ok:true,number:b.number}); }
 
+  // Verschlüsselte Schlüssel-Sicherung ablegen (für Login auf neuen Geräten).
+  // Nur der Besitzer (per Signatur) UND nur ein bestätigter Account darf das.
+  if(req.method==="POST" && p==="/backup/set"){ const b=await body(req);
+    if(!b.number||!b.signPub||!b.signature||!b.blob) return send(res,400,{error:"missing"});
+    const e=await store.getIdentity(b.number);
+    if(!e) return send(res,404,{error:"unknown number"});
+    if(e.signPub!==b.signPub) return send(res,403,{error:"not owner"});
+    let ok=false; try{ ok=nacl.sign.detached.verify(new Uint8Array(Buffer.from(b.blob,"utf8")),new Uint8Array(Buffer.from(b.signature,"base64")),new Uint8Array(Buffer.from(b.signPub,"base64"))); }catch{}
+    if(!ok) return send(res,401,{error:"bad-signature"});
+    await store.setBackup(b.number,String(b.blob).slice(0,300000));
+    return send(res,200,{ok:true}); }
+
+  // Verschlüsselte Sicherung holen (undurchsichtig; ohne Passwort nutzlos)
+  if(req.method==="GET" && p==="/backup"){ const n=url.searchParams.get("number");
+    const blob=await store.getBackup(n); return send(res,200,{blob:blob||null}); }
+
   // Profil aktualisieren (Name, Avatar, Status) — Testversion ohne Signatur-Zwang
   if(req.method==="POST" && p==="/profile"){ const b=await body(req);
     const ok=await store.updateProfile(b.number,{name:b.name,avatar:b.avatar,status:b.status});
