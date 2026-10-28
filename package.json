@@ -9,6 +9,7 @@
     "start": "node local-server.js"
   },
   "dependencies": {
+    "pg": "8.13.1",
     "tweetnacl": "1.0.3",
     "web-push": "3.6.7"
   },

@@ -30,19 +30,19 @@ if(VAPID_PRIVATE){
   console.log("  (VAPID_PRIVATE nicht gesetzt – Benachrichtigungen aus, siehe Render-Env)");
 }
 
-const directory = new Map();   // number -> { signPub, kexPub, name }
-const mailbox   = new Map();   // number -> [ {from, envelope, ts} ]
-const challenges = new Map();
-const lastSeen  = new Map();   // number -> Zeitpunkt des letzten Lebenszeichens (Präsenz)
-const pushSubs  = new Map();   // number -> Push-Subscription (für Benachrichtigungen)
-const ONLINE_MS = 30000;       // als "online" gilt, wer < 30 s aktiv war
-const nextNumber = () => { for(;;){ const n=String(crypto.randomInt(100000000,1000000000)); if(!directory.has(n)) return n; } };
+// Speicher: Postgres (dauerhaft) wenn DATABASE_URL gesetzt, sonst Arbeitsspeicher.
+const { createStore, memStore } = require("./store");
+let store = createStore();
 
-function pushTo(number){
+const challenges = new Map();  // kurzlebig (Login-Nonce) – darf im Speicher bleiben
+const lastSeen  = new Map();   // number -> Zeitpunkt des letzten Lebenszeichens (Präsenz) – flüchtig
+const ONLINE_MS = 30000;       // als "online" gilt, wer < 30 s aktiv war
+
+async function pushTo(number){
   if(!webpush) return;
-  const sub=pushSubs.get(number); if(!sub) return;
+  const sub=await store.getPushSub(number); if(!sub) return;
   const payload=JSON.stringify({title:"stilla",body:"Neue Nachricht"});   // neutral, kein Inhalt
-  webpush.sendNotification(sub,payload).catch(err=>{ if(err&&(err.statusCode===404||err.statusCode===410)) pushSubs.delete(number); });
+  webpush.sendNotification(sub,payload).catch(async err=>{ if(err&&(err.statusCode===404||err.statusCode===410)) await store.delPushSub(number); });
 }
 
 function send(res,code,obj){ res.writeHead(code,{"Content-Type":"application/json"}); res.end(JSON.stringify(obj)); }
@@ -106,7 +106,7 @@ const server = http.createServer(async (req,res)=>{
   if(req.method==="GET" && STATIC[p]){ try{ const [f,ct]=STATIC[p]; const buf=fs.readFileSync(path.join(__dirname,"public",f)); res.writeHead(200,{"Content-Type":ct,"Cache-Control":"no-cache"}); return res.end(buf); }catch{ res.writeHead(404); return res.end(); } }
 
   // Push-Subscription speichern (für Benachrichtigungen)
-  if(req.method==="POST" && p==="/subscribe"){ const b=await body(req); if(b.number&&b.subscription) pushSubs.set(b.number,b.subscription); return send(res,200,{ok:true}); }
+  if(req.method==="POST" && p==="/subscribe"){ const b=await body(req); if(b.number&&b.subscription) await store.setPushSub(b.number,b.subscription); return send(res,200,{ok:true}); }
 
   // E-Mail-Bestätigung anfordern: schickt eine Mail mit Bestätigungslink
   if(req.method==="POST" && p==="/verify/request"){ const b=await body(req);
@@ -120,28 +120,24 @@ const server = http.createServer(async (req,res)=>{
 
   if(req.method==="POST" && p==="/register"){ const b=await body(req);
     if(!b.signPub||!b.kexPub) return send(res,400,{error:"keys missing"});
-    const number=nextNumber(); directory.set(number,{signPub:b.signPub,kexPub:b.kexPub,name:b.name||"",avatar:b.avatar||"",status:b.status||""});
+    const number=await store.createIdentity({signPub:b.signPub,kexPub:b.kexPub,name:b.name||"",avatar:b.avatar||"",status:b.status||""});
     return send(res,200,{number}); }
 
   // Nummer zurueckholen/beanspruchen — ueberlebt Server-Neustart. Eigentuemer = signPub.
   if(req.method==="POST" && p==="/reclaim"){ const b=await body(req);
     if(!b.number||!b.signPub||!b.kexPub) return send(res,400,{error:"missing"});
-    const e=directory.get(b.number);
-    if(e && e.signPub!==b.signPub) return send(res,409,{taken:true});   // andere Identitaet haelt die Nummer
-    directory.set(b.number,{signPub:b.signPub,kexPub:b.kexPub,name:b.name||"",avatar:b.avatar||"",status:b.status||""});
+    const r=await store.reclaim(b.number,{signPub:b.signPub,kexPub:b.kexPub,name:b.name||"",avatar:b.avatar||"",status:b.status||""});
+    if(r.taken) return send(res,409,{taken:true});   // andere Identitaet haelt die Nummer
     return send(res,200,{ok:true,number:b.number}); }
 
   // Profil aktualisieren (Name, Avatar, Status) — Testversion ohne Signatur-Zwang
   if(req.method==="POST" && p==="/profile"){ const b=await body(req);
-    const e=directory.get(b.number); if(!e) return send(res,404,{error:"unknown number"});
-    if(typeof b.name==="string") e.name=b.name.slice(0,40);
-    if(typeof b.avatar==="string") e.avatar=b.avatar.slice(0,200000);   // kleines Bild als data-URL
-    if(typeof b.status==="string") e.status=b.status.slice(0,60);
-    directory.set(b.number,e);
+    const ok=await store.updateProfile(b.number,{name:b.name,avatar:b.avatar,status:b.status});
+    if(!ok) return send(res,404,{error:"unknown number"});
     return send(res,200,{ok:true}); }
 
-  if(req.method==="GET" && p==="/keys"){ const e=directory.get(url.searchParams.get("number"));
-    return e?send(res,200,{number:url.searchParams.get("number"),...e}):send(res,404,{error:"unknown number"}); }
+  if(req.method==="GET" && p==="/keys"){ const n=url.searchParams.get("number"); const e=await store.getIdentity(n);
+    return e?send(res,200,{number:n,...e}):send(res,404,{error:"unknown number"}); }
 
   // Präsenz: welche der angefragten Nummern sind gerade online?
   if(req.method==="GET" && p==="/presence"){ const now=Date.now();
@@ -150,26 +146,27 @@ const server = http.createServer(async (req,res)=>{
     return send(res,200,{online}); }
 
   if(req.method==="POST" && p==="/challenge"){ const b=await body(req);
-    if(!directory.has(b.number)) return send(res,404,{error:"unknown number"});
+    if(!(await store.hasIdentity(b.number))) return send(res,404,{error:"unknown number"});
     const nonce=crypto.randomBytes(24).toString("base64"); challenges.set(b.number,nonce);
     return send(res,200,{nonce}); }
 
   if(req.method==="POST" && p==="/login"){ const b=await body(req);
-    const nonce=challenges.get(b.number), e=directory.get(b.number);
+    const nonce=challenges.get(b.number), e=await store.getIdentity(b.number);
     if(!nonce||!e) return send(res,400,{error:"no challenge"}); challenges.delete(b.number);
-    return send(res, verifyLogin(e.signPub,nonce,b.signature)?200:401, {ok:verifyLogin(e.signPub,nonce,b.signature)}); }
+    const ok=verifyLogin(e.signPub,nonce,b.signature);
+    return send(res, ok?200:401, {ok}); }
 
   if(req.method==="POST" && p==="/send"){ const b=await body(req);
     if(b.from) lastSeen.set(b.from,Date.now());
-    if(!directory.has(b.to)) return send(res,404,{error:"unknown recipient"});
-    const q=mailbox.get(b.to)||[]; q.push({from:b.from,envelope:b.envelope,ts:Number(b.ts)||Date.now()}); mailbox.set(b.to,q);
-    pushTo(b.to);   // Benachrichtigung ans Zielgerät (neutral, ohne Inhalt)
+    if(!(await store.hasIdentity(b.to))) return send(res,404,{error:"unknown recipient"});
+    await store.pushMail(b.to,{from:b.from,envelope:b.envelope,ts:Number(b.ts)||Date.now()});
+    pushTo(b.to).catch(()=>{});   // Benachrichtigung ans Zielgerät (neutral, ohne Inhalt) – fire-and-forget
     return send(res,200,{queued:true}); }
 
   if(req.method==="POST" && p==="/fetch"){ const b=await body(req);
     if(b.number && !b.invisible) lastSeen.set(b.number,Date.now());  // Lebenszeichen (nicht bei Unsichtbar)
     else if(b.number && b.invisible) lastSeen.delete(b.number);      // sofort offline erscheinen
-    const q=mailbox.get(b.number)||[]; mailbox.delete(b.number);     // sofort löschen
+    const q=await store.fetchMail(b.number);                          // atomar lesen+löschen
     return send(res,200,{messages:q}); }
 
   send(res,404,{error:"not found"});
@@ -180,12 +177,21 @@ function localIPs(){ const out=[]; const ifs=os.networkInterfaces();
   return out; }
 
 const PORT = process.env.PORT || 8787;   // Hosting-Dienste geben den Port per Umgebungsvariable vor
-server.listen(PORT,"0.0.0.0",()=>{
-  console.log("\n  stilla-Server läuft auf Port "+PORT+".\n");
-  console.log("  Auf diesem Mac:      http://localhost:"+PORT);
-  localIPs().forEach(ip=>console.log("  Im WLAN (2. Gerät):  http://"+ip+":"+PORT));
-  console.log("\n  Beenden mit Strg+C.\n");
-});
+(async ()=>{
+  try{
+    await store.init();
+    console.log("  Speicher: "+store.kind+(store.kind==="postgres"?" (dauerhaft)":" (nur Arbeitsspeicher)"));
+  }catch(e){
+    console.log("  DB-Start fehlgeschlagen ("+e.message+") – falle auf Arbeitsspeicher zurück.");
+    store=memStore(); await store.init();
+  }
+  server.listen(PORT,"0.0.0.0",()=>{
+    console.log("\n  stilla-Server läuft auf Port "+PORT+".\n");
+    console.log("  Auf diesem Mac:      http://localhost:"+PORT);
+    localIPs().forEach(ip=>console.log("  Im WLAN (2. Gerät):  http://"+ip+":"+PORT));
+    console.log("\n  Beenden mit Strg+C.\n");
+  });
+})();
 
 /* Keep-Alive: verhindert, dass der Gratis-Dienst (Render) nach ~15 Minuten
    einschläft und dabei alle Nummern/Daten aus dem Speicher verliert.
