@@ -281,6 +281,14 @@
   .sestage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
   .secanvas{position:relative;max-width:100%;max-height:100%;touch-action:none}
   .secanvas img{display:block;width:100%;height:100%;object-fit:contain;border-radius:8px;pointer-events:none}
+  /* Filterstreifen (wie bei Instagram) */
+  .sefilters{display:flex;gap:9px;padding:9px 12px 11px;overflow-x:auto;background:#111;z-index:3;-webkit-overflow-scrolling:touch}
+  .sefilters::-webkit-scrollbar{display:none}
+  .sefilters .fch{flex:none;width:58px;cursor:pointer;background:none;border:none;padding:0;text-align:center}
+  .sefilters .fch .thm{width:58px;height:78px;border-radius:9px;object-fit:cover;display:block;border:2px solid transparent}
+  .sefilters .fch.sel .thm{border-color:var(--accent)}
+  .sefilters .fch .lbl{display:block;margin-top:4px;font-size:.62rem;color:rgba(255,255,255,.72);font-family:ui-monospace,monospace;letter-spacing:.03em}
+  .sefilters .fch.sel .lbl{color:var(--accent)}
   .seov{position:absolute;transform:translate(-50%,-50%);cursor:grab;user-select:none;-webkit-user-select:none;white-space:nowrap;touch-action:none;line-height:1.1}
   .seov.text{font-weight:800;text-shadow:0 2px 8px rgba(0,0,0,.55);padding:2px 6px}
   .sehint{position:absolute;left:0;right:0;bottom:8px;text-align:center;color:rgba(255,255,255,.6);font-size:.74rem;pointer-events:none}
@@ -561,7 +569,8 @@
       </div>
       <button class="seshare" id="seShare">Zur Story</button>
     </div>
-    <div class="sestage" id="seStage"><div class="secanvas" id="seCanvas"><img id="seImg" alt=""></div><div class="sehint" id="seHint">Text/Emoji hinzufügen und frei verschieben · Text antippen = Farbe</div></div>
+    <div class="sestage" id="seStage"><div class="secanvas" id="seCanvas"><img id="seImg" alt=""></div><div class="sehint" id="seHint">Filter wählen · Text/Emoji antippen zum Hinzufügen · frei verschieben · Text antippen = Farbe</div></div>
+    <div class="sefilters" id="seFilters"></div>
     <div class="seemoji" id="seEmojiRow"></div>
     <input id="seText" class="setext" placeholder="Text eingeben…" maxlength="60" autocomplete="off">
   </div>
@@ -1194,12 +1203,36 @@ async function storyLike(){
 /* ---------- Story-Editor (Text/Emoji aufs Bild) ---------- */
 const SE_EMOJI=["😀","😂","😍","🥰","😎","😮","😢","😡","👍","🔥","❤️","✨","🎉","💯","🙌","👏","🤝","🌙","⭐","🌈","☀️","💧","🎵","📍","💬","🤫","🕊️","🫶","😴","🥳"];
 const SE_COLORS=["#ffffff","#000000","#58d5c9","#ffd84d","#ff5a7a","#5aa9ff"];
+// Filter: CSS-filter-Strings – funktionieren live (img.style.filter) UND beim Export (ctx.filter)
+const SE_FILTERS=[
+  {name:"Original", css:"none"},
+  {name:"Klar",     css:"contrast(1.12) saturate(1.12) brightness(1.03)"},
+  {name:"Warm",     css:"saturate(1.3) sepia(.22) brightness(1.05) contrast(1.04)"},
+  {name:"Kühl",     css:"saturate(1.15) hue-rotate(-12deg) brightness(1.03) contrast(1.05)"},
+  {name:"Vintage",  css:"sepia(.5) contrast(.95) brightness(1.06) saturate(1.2)"},
+  {name:"S/W",      css:"grayscale(1) contrast(1.12)"},
+  {name:"Drama",    css:"contrast(1.42) saturate(1.2) brightness(.98)"},
+  {name:"Pastell",  css:"saturate(.82) brightness(1.12) contrast(.94)"},
+  {name:"Nacht",    css:"brightness(.92) contrast(1.15) saturate(1.1) hue-rotate(6deg)"}
+];
+let seFilter="none";
+function applySeFilter(css){ seFilter=css; $("#seImg").style.filter=(css==="none"?"none":css);
+  document.querySelectorAll("#seFilters .fch").forEach(c=>c.classList.toggle("sel",c.dataset.css===css)); }
+function buildSeFilters(dataUrl){
+  const row=$("#seFilters"); row.innerHTML="";
+  SE_FILTERS.forEach(f=>{
+    const b=document.createElement("button");b.type="button";b.className="fch"+(f.css===seFilter?" sel":"");b.dataset.css=f.css;
+    const im=document.createElement("img");im.className="thm";im.src=dataUrl;im.alt="";im.style.filter=(f.css==="none"?"none":f.css);
+    const l=document.createElement("span");l.className="lbl";l.textContent=f.name;
+    b.appendChild(im);b.appendChild(l);b.onclick=()=>applySeFilter(f.css);row.appendChild(b);
+  });
+}
 function openStoryEditor(dataUrl){
   const img=$("#seImg");$("#seCanvas").querySelectorAll(".seov").forEach(e=>e.remove());
   img.onload=()=>{$("#seCanvas").style.aspectRatio=img.naturalWidth+"/"+img.naturalHeight;};
-  img.src=dataUrl;
+  img.src=dataUrl; seFilter="none"; img.style.filter="none";
   $("#seEmojiRow").classList.remove("on");$("#seText").classList.remove("on");$("#seText").value="";
-  buildSeEmoji();$("#storyedit").classList.add("on");
+  buildSeEmoji();buildSeFilters(dataUrl);$("#storyedit").classList.add("on");
 }
 function closeStoryEditor(){$("#storyedit").classList.remove("on");}
 function buildSeEmoji(){const row=$("#seEmojiRow");if(row.dataset.built)return;row.dataset.built="1";
@@ -1227,7 +1260,11 @@ function makeDraggable(el){
 function compositeStory(){
   const img=$("#seImg");const w=img.naturalWidth||1080,h=img.naturalHeight||1080;
   const cv=document.createElement("canvas");cv.width=w;cv.height=h;const ctx=cv.getContext("2d");
-  ctx.drawImage(img,0,0,w,h);ctx.textAlign="center";ctx.textBaseline="middle";
+  // Filter nur aufs Foto anwenden (nicht auf Text/Emoji); ctx.filter wird danach zurückgesetzt
+  try{ ctx.filter=(seFilter&&seFilter!=="none")?seFilter:"none"; }catch(_){}
+  ctx.drawImage(img,0,0,w,h);
+  try{ ctx.filter="none"; }catch(_){}
+  ctx.textAlign="center";ctx.textBaseline="middle";
   $("#seCanvas").querySelectorAll(".seov").forEach(el=>{
     const x=parseFloat(el.dataset.x)*w,y=parseFloat(el.dataset.y)*h,fs=parseFloat(el.dataset.frac||"0.07")*h;
     ctx.font="800 "+fs+"px -apple-system,system-ui,'Segoe UI',sans-serif";
