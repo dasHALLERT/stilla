@@ -150,6 +150,11 @@ const server = http.createServer(async (req,res)=>{
     if(number){ try{ await store.setVerified(number); }catch(_){}; return send(res,200,{ok:true,number}); }
     return send(res,200,{ok:false}); }
 
+  // Prüfen, ob eine E-Mail schon für ein Konto benutzt wird (eine E-Mail = ein Konto)
+  if(req.method==="POST" && p==="/email-taken"){ const b=await body(req);
+    let taken=false; try{ taken=await store.emailExists((b.email||"").trim()); }catch(_){}
+    return send(res,200,{taken}); }
+
   if(req.method==="POST" && p==="/register"){ const b=await body(req);
     if(!b.signPub||!b.kexPub) return send(res,400,{error:"keys missing"});
     const number=await store.createIdentity({signPub:b.signPub,kexPub:b.kexPub,name:b.name||"",avatar:b.avatar||"",status:b.status||""});

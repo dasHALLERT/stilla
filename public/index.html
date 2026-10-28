@@ -804,6 +804,8 @@ async function createProfile(){
   const btn=$("#createBtn");btn.disabled=true;
   try{
     if(typeof nacl==="undefined") throw new Error("Krypto-Bibliothek lädt noch — Seite neu laden.");
+    // Eine E-Mail = ein Konto: vorher prüfen
+    try{ const t=await api("/email-taken","POST",{email}); if(t&&t.taken){ err.textContent="Unter dieser E-Mail-Adresse gibt es bereits ein Konto. Geh oben auf „Einloggen“."; btn.disabled=false; return; } }catch{}
     const id=newIdentity(name);
     const reg=await api("/register","POST",{signPub:id.signPub,kexPub:id.kexPub,name});
     if(!reg||!reg.number) throw new Error("Server antwortet gerade nicht — kurz warten, erneut.");

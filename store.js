@@ -26,6 +26,8 @@ function memStore(){
     async setEmail(n,email){ const e=directory.get(n); if(e){ e.email=(email||"").toLowerCase(); directory.set(n,e); return true; } return false; },
     async numbersForEmail(email){ email=(email||"").toLowerCase(); const out=[];
       for(const [num,e] of directory){ if(e.email===email && e.verified) out.push(num); } return out; },
+    async emailExists(email){ email=(email||"").toLowerCase(); if(!email) return false;
+      for(const [,e] of directory){ if(e.email===email) return true; } return false; },
     async createIdentity(d){
       let n; do{ n=String(crypto.randomInt(100000000,1000000000)); }while(directory.has(n));
       directory.set(n,{signPub:d.signPub,kexPub:d.kexPub,name:d.name||"",avatar:d.avatar||"",status:d.status||""});
@@ -92,6 +94,7 @@ function pgStore(Pool, connectionString){
     async setVerified(n){ const r=await q(`UPDATE identities SET verified=1 WHERE number=$1`,[n]); return r.rowCount>0; },
     async setEmail(n,email){ const r=await q(`UPDATE identities SET email=$2 WHERE number=$1`,[n,(email||"").toLowerCase()]); return r.rowCount>0; },
     async numbersForEmail(email){ const r=await q(`SELECT number FROM identities WHERE lower(email)=$1 AND verified<>0`,[(email||"").toLowerCase()]); return r.rows.map(x=>x.number); },
+    async emailExists(email){ if(!email) return false; const r=await q(`SELECT 1 FROM identities WHERE lower(email)=$1 LIMIT 1`,[(email||"").toLowerCase()]); return r.rows.length>0; },
     async createIdentity(d){
       for(let i=0;i<10000;i++){
         const n=String(crypto.randomInt(100000000,1000000000));
