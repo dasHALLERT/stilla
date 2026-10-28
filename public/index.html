@@ -1635,7 +1635,7 @@ async function recoverNumber(email,hintEl){
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){say("Bitte eine gültige E-Mail eingeben.");return;}
   say("Sende…");
   try{await api("/recover","POST",{email});}catch{}
-  say("Falls ein bestätigtes Konto mit dieser E-Mail existiert, haben wir dir die Nummer geschickt. Posteingang (ggf. Spam) prüfen.");
+  say("Falls ein Konto mit dieser E-Mail existiert, haben wir dir die Nummer geschickt. Posteingang (ggf. Spam) prüfen.");
 }
 $("#recoverBtn").onclick=()=>recoverNumber($("#recoverEmail").value,$("#recoverHint"));
 $("#loginPw").addEventListener("keydown",e=>{if(e.key==="Enter")loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));});
