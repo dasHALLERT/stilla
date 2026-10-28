@@ -404,8 +404,9 @@
     </div>
     <!-- EINLOGGEN -->
     <div id="loginForm" style="width:100%;max-width:300px;display:none;flex-direction:column;align-items:stretch">
-      <p class="sub" style="margin:0 0 10px">Logge dich mit deiner Nummer und deinem Passwort ein – dann bekommst du denselben Account zurück, ohne neue Nummer.</p>
+      <p class="sub" style="margin:0 0 10px">Logge dich mit Nummer, E-Mail und Passwort ein – dann bekommst du denselben Account zurück, ohne neue Nummer.</p>
       <input class="fld" id="loginNum" inputmode="numeric" placeholder="Deine 9-stellige Nummer" autocomplete="username">
+      <input class="fld" id="loginEmail" type="email" placeholder="E-Mail-Adresse" autocomplete="email" style="margin-top:8px">
       <input class="fld" id="loginPw" type="password" placeholder="Passwort" autocomplete="current-password" style="margin-top:8px">
       <button class="fld" id="loginBtn" style="margin-top:10px;max-width:none">Einloggen</button>
       <p class="sub" id="loginHint" style="font-size:.74rem;margin-top:6px"></p>
@@ -784,16 +785,19 @@ async function setPassword(pw,hintEl){
     say("Konnte nicht speichern — später erneut.");return false;
   }catch{ say("Konnte nicht speichern — später erneut.");return false; }
 }
-async function loginWithNumber(num,pw,hintEl){
+async function loginWithNumber(num,email,pw,hintEl){
   const say=m=>hintEl?hintEl.textContent=m:toast(m);
-  num=(num||"").replace(/\D/g,"");
+  num=(num||"").replace(/\D/g,"");email=(email||"").trim().toLowerCase();
   if(num.length!==9){say("Bitte eine 9-stellige Nummer.");return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){say("Bitte eine gültige E-Mail eingeben.");return;}
   if(!pw){say("Bitte dein Passwort eingeben.");return;}
   say("Melde an…");
   let r;try{r=await api("/backup?number="+num,"GET");}catch{r=null;}
-  if(!r||!r.blob){say("Für diese Nummer gibt es keinen Login. Auf dem ersten Gerät zuerst ein Passwort einrichten.");return;}
+  if(!r||!r.blob){say("Login fehlgeschlagen – Nummer, E-Mail oder Passwort stimmt nicht.");return;}
   const restored=await restoreFromBlob(r.blob,pw);
-  if(!restored||!restored.signSec){say("Passwort falsch.");return;}
+  if(!restored||!restored.signSec){say("Login fehlgeschlagen – Nummer, E-Mail oder Passwort stimmt nicht.");return;}
+  // E-Mail muss zum Konto passen (sofern hinterlegt)
+  if(restored.email && restored.email.toLowerCase()!==email){say("Login fehlgeschlagen – Nummer, E-Mail oder Passwort stimmt nicht.");return;}
   me={number:restored.number,name:restored.name||"",avatar:"",status:"",signPub:restored.signPub,signSec:restored.signSec,kexPub:restored.kexPub,kexSec:restored.kexSec,createdAt:Date.now(),verified:true,email:restored.email||"",hasPw:true};
   // Profil (Name/Avatar/Status) vom Server nachladen
   try{const k=await api("/keys?number="+num,"GET"); if(k&&!k.error){me.name=k.name||me.name;me.avatar=k.avatar||"";me.status=k.status||"";}}catch{}
@@ -1680,7 +1684,7 @@ function authMode(m){
 }
 $("#tabReg").onclick=()=>authMode("reg");
 $("#tabLogin").onclick=()=>authMode("login");
-$("#loginBtn").onclick=()=>loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));
+$("#loginBtn").onclick=()=>loginWithNumber($("#loginNum").value,$("#loginEmail").value,$("#loginPw").value,$("#loginHint"));
 $("#toRecover").onclick=()=>{const b=$("#recoverBox");b.style.display=(b.style.display==="none"?"block":"none");if(b.style.display!=="none")$("#recoverEmail").focus();};
 async function recoverNumber(email,hintEl){
   const say=m=>hintEl.textContent=m;
@@ -1727,7 +1731,7 @@ async function doPasswordReset(){
   }else{ me=null; hint.textContent=(r&&r.error==="bad-token")?"Der Link ist ungültig oder abgelaufen.":"Konnte nicht zurücksetzen — später erneut."; }
 }
 $("#resetDoBtn").onclick=doPasswordReset;
-$("#loginPw").addEventListener("keydown",e=>{if(e.key==="Enter")loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));});
+$("#loginPw").addEventListener("keydown",e=>{if(e.key==="Enter")loginWithNumber($("#loginNum").value,$("#loginEmail").value,$("#loginPw").value,$("#loginHint"));});
 /* ---- Passwort ändern (Pop-up) ---- */
 async function currentBackupBlob(){ try{const r=await api("/backup?number="+me.number,"GET"); return r&&r.blob?r.blob:null;}catch{return null;} }
 async function uploadBackup(password){
