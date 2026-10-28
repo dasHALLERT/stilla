@@ -103,13 +103,15 @@ function pgStore(Pool, connectionString){
       return true;
     },
     async pushMail(to,item){
+      // Umschlag ist ein Objekt {n,c}; als JSON-Text ablegen (TEXT-Spalte)
+      const env = typeof item.envelope==="string" ? item.envelope : JSON.stringify(item.envelope);
       await q(`INSERT INTO mailbox(to_number,from_number,envelope,ts) VALUES($1,$2,$3,$4)`,
-        [to,item.from,item.envelope,item.ts]);
+        [to,item.from,env,item.ts]);
     },
     async fetchMail(n){
       const r=await q(`DELETE FROM mailbox WHERE to_number=$1 RETURNING id,from_number,envelope,ts`,[n]);
       return r.rows.sort((a,b)=>Number(a.id)-Number(b.id))
-        .map(x=>({from:x.from_number,envelope:x.envelope,ts:Number(x.ts)}));
+        .map(x=>({from:x.from_number,envelope:parseEnv(x.envelope),ts:Number(x.ts)}));
     },
     async setPushSub(n,sub){
       await q(`INSERT INTO push_subs(number,sub) VALUES($1,$2)
@@ -122,6 +124,13 @@ function pgStore(Pool, connectionString){
     async delPushSub(n){ await q(`DELETE FROM push_subs WHERE number=$1`,[n]); },
   };
   return api;
+}
+
+// Umschlag aus der DB kommt als JSON-Text zurück -> zurück zum Objekt {n,c}
+function parseEnv(v){
+  if(v && typeof v==="object") return v;
+  if(typeof v==="string"){ try{ return JSON.parse(v); }catch{ return v; } }
+  return v;
 }
 
 function sslOpt(cs){

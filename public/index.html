@@ -953,7 +953,8 @@ async function fetchLoop(){
     const from=m.from;if(!from)continue;
     // Schlüssel nur holen (nicht als Kontakt speichern) — Entschlüsseln
     let p=await lookupKeys(from);
-    const raw=(p&&p.kexPub)?decrypt(p.kexPub,m.envelope):null;
+    let env=m.envelope; if(typeof env==="string"){try{env=JSON.parse(env);}catch{}}
+    const raw=(p&&p.kexPub)?decrypt(p.kexPub,env):null;
     if(raw==null) continue;
     const {text,att}=unpackMsg(raw);
 
