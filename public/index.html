@@ -30,6 +30,7 @@
   input::placeholder{color:var(--muted)}
   button{background:var(--accent);color:var(--on);border:none;border-radius:11px;padding:12px;font-weight:600;font-size:.92rem;cursor:pointer;width:100%}
   button.ghost{background:none;border:1px solid var(--line);color:var(--fg)}
+  button.ghost.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
   .err{color:var(--bad);font-size:.82rem;text-align:center;margin:8px 0;min-height:1em}
   .mynum{font-family:ui-monospace,monospace;font-size:1.6rem;letter-spacing:.14em;color:var(--accent);text-align:center}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:12px}
@@ -272,6 +273,9 @@
   .svlike.liked svg{fill:#ff5a7a;stroke:#ff5a7a}
   /* Story-Editor (Text/Emoji aufs Bild) */
   .linkbtn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:.82rem;text-decoration:underline;padding:4px;width:auto}
+  .authtabs{display:flex;gap:6px;width:100%;max-width:300px;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:4px;margin:4px 0 14px}
+  .authtabs button{flex:1;background:none;border:none;color:var(--muted);font-weight:600;font-size:.9rem;padding:9px 6px;border-radius:9px;cursor:pointer}
+  .authtabs button.sel{background:var(--accent);color:var(--on)}
   .storyedit{position:absolute;inset:0;z-index:68;background:#000;display:none;flex-direction:column}
   .storyedit.on{display:flex}
   .sehead{display:flex;align-items:center;gap:10px;padding:10px 14px;z-index:3}
@@ -368,21 +372,28 @@
   <div class="view on" id="auth">
     <span class="logo"><svg><use href="#mark"/></svg></span>
     <h1>stilla</h1>
-    <p class="sub" style="max-width:32ch">Keine Handynummer – du bekommst eine eigene 9-stellige Nummer. Mit E-Mail & Passwort kannst du dich auf jedem Gerät einloggen. Die E-Mail bestätigst du per Link (48 h).</p>
-    <input class="fld" id="name" placeholder="Dein Name" maxlength="24" autocomplete="name" style="max-width:300px">
-    <input class="fld" id="authEmail" type="email" placeholder="E-Mail-Adresse" autocomplete="email" style="max-width:300px;margin-top:8px">
-    <input class="fld" id="authPw" type="password" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="new-password" style="max-width:300px;margin-top:8px">
-    <button class="fld" id="createBtn" style="max-width:300px;margin-top:10px">Account erstellen</button>
-    <div class="err" id="authErr"></div>
-    <button class="linkbtn" id="toLogin" type="button" style="margin-top:4px">Schon eine Nummer? Hier einloggen</button>
-    <div id="loginBox" style="display:none;width:100%;max-width:300px;margin-top:8px">
+    <div class="authtabs">
+      <button type="button" id="tabReg" class="sel">Neu registrieren</button>
+      <button type="button" id="tabLogin">Einloggen</button>
+    </div>
+    <!-- REGISTRIEREN -->
+    <div id="regForm" style="width:100%;max-width:300px;display:flex;flex-direction:column;align-items:stretch">
+      <p class="sub" style="margin:0 0 10px">Keine Handynummer – du bekommst eine eigene 9-stellige Nummer. E-Mail & Passwort brauchst du, um dich auf jedem Gerät einzuloggen. Die E-Mail bestätigst du per Link (48 h).</p>
+      <input class="fld" id="name" placeholder="Dein Name" maxlength="24" autocomplete="name">
+      <input class="fld" id="authEmail" type="email" placeholder="E-Mail-Adresse" autocomplete="email" style="margin-top:8px">
+      <input class="fld" id="authPw" type="password" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="new-password" style="margin-top:8px">
+      <button class="fld" id="createBtn" style="margin-top:10px;max-width:none">Account erstellen</button>
+      <div class="err" id="authErr"></div>
+    </div>
+    <!-- EINLOGGEN -->
+    <div id="loginForm" style="width:100%;max-width:300px;display:none;flex-direction:column;align-items:stretch">
+      <p class="sub" style="margin:0 0 10px">Logge dich mit deiner Nummer und deinem Passwort ein – dann bekommst du denselben Account zurück, ohne neue Nummer.</p>
       <input class="fld" id="loginNum" inputmode="numeric" placeholder="Deine 9-stellige Nummer" autocomplete="username">
       <input class="fld" id="loginPw" type="password" placeholder="Passwort" autocomplete="current-password" style="margin-top:8px">
-      <button class="fld" id="loginBtn" style="margin-top:8px;max-width:none">Einloggen</button>
+      <button class="fld" id="loginBtn" style="margin-top:10px;max-width:none">Einloggen</button>
       <p class="sub" id="loginHint" style="font-size:.74rem;margin-top:6px"></p>
-      <p class="sub" style="font-size:.72rem;margin-top:2px">Passwort richtest du auf dem ersten Gerät ein — nach der E-Mail-Bestätigung (Einstellungen → Konto).</p>
     </div>
-    <p class="sub" style="font-size:.74rem;color:var(--bad);margin-top:8px">Test-Version — keine echten Geheimnisse.</p>
+    <p class="sub" style="font-size:.74rem;color:var(--bad);margin-top:14px">Test-Version — keine echten Geheimnisse.</p>
   </div>
 
   <!-- HOME -->
@@ -534,6 +545,10 @@
       <p class="sub" id="notifHint" style="font-size:.74rem;margin:6px 2px 0">Für neue Nachrichten & Freundschaftsanfragen – auch wenn stilla geschlossen ist. Auf dem iPhone zuerst „Zum Home-Bildschirm" hinzufügen.</p>
 
       <div style="margin-top:22px;margin-bottom:10px"><button id="setSave">Speichern</button></div>
+
+      <div class="setlbl">KONTO-SITZUNG</div>
+      <button class="ghost danger" id="logoutBtn">Ausloggen</button>
+      <p class="sub" style="font-size:.74rem;margin:6px 2px 18px">Zum Wiedereinloggen brauchst du deine Nummer und dein Passwort. Richte das Passwort vorher ein (oben unter „Konto"), sonst kommst du nicht zurück.</p>
     </div>
   </div>
 
@@ -1595,7 +1610,15 @@ async function saveSettings(){
 /* ---------- Events ---------- */
 $("#createBtn").onclick=createProfile;
 ["name","authEmail","authPw"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{if(e.key==="Enter")createProfile();}));
-$("#toLogin").onclick=()=>{const b=$("#loginBox");b.style.display=(b.style.display==="none"?"block":"none");if(b.style.display!=="none")$("#loginNum").focus();};
+function authMode(m){
+  const reg=m==="reg";
+  $("#regForm").style.display=reg?"flex":"none";
+  $("#loginForm").style.display=reg?"none":"flex";
+  $("#tabReg").classList.toggle("sel",reg);$("#tabLogin").classList.toggle("sel",!reg);
+  $(reg?"#name":"#loginNum").focus();
+}
+$("#tabReg").onclick=()=>authMode("reg");
+$("#tabLogin").onclick=()=>authMode("login");
 $("#loginBtn").onclick=()=>loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));
 $("#loginPw").addEventListener("keydown",e=>{if(e.key==="Enter")loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));});
 $("#pwSave").onclick=async()=>{const ok=await setPassword($("#setPw").value,$("#pwHint"));if(ok)$("#setPw").value="";};
@@ -1644,6 +1667,16 @@ $("#settingsBtn").onclick=openSettings;
 $("#homeAv").onclick=openSettings;
 $("#setBack").onclick=()=>{go("home");};
 $("#setSave").onclick=saveSettings;
+function doLogout(){
+  const warn=(me&&!me.hasPw)
+    ? "Achtung: Du hast noch KEIN Passwort gesetzt. Ohne Passwort kommst du nach dem Ausloggen nicht mehr in dieses Konto. Trotzdem ausloggen?"
+    : "Ausloggen? Zum Wiedereinloggen brauchst du deine Nummer und dein Passwort.";
+  if(!confirm(warn))return;
+  try{localStorage.removeItem("stilla_me");}catch{}
+  me=null; if(poll)clearInterval(poll); if(pres)clearInterval(pres); if(verTimer)clearInterval(verTimer);
+  location.reload();
+}
+$("#logoutBtn").onclick=doLogout;
 $("#avEdit").onclick=()=>$("#avFile").click();
 $("#avFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;
   try{pendingAvatar=await shrinkImageSquare(f);setAv($("#setAvImg"),{avatar:pendingAvatar});}
