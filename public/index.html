@@ -314,7 +314,27 @@
   #menu button.mi:first-child{border-top:none}
   #menu button.mi.danger{color:var(--bad)}
   #menu button.mi.cancel{margin-top:6px;font-weight:600}
+  /* Start-Animation: drei Striche bauen sich nacheinander auf, dann zur App */
+  #splash{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;transition:opacity .28s ease}
+  #splash.gone{opacity:0;pointer-events:none}
+  #splash .sb{opacity:0;transform-box:fill-box;transform-origin:50% 100%;animation:sbIn .34s cubic-bezier(.2,.8,.2,1) both}
+  #splash .sb3{transform-origin:50% 50%;animation-name:sbPop}
+  #splash .sb1{animation-delay:.05s}
+  #splash .sb2{animation-delay:.28s}
+  #splash .sb3{animation-delay:.52s}
+  @keyframes sbIn{from{opacity:0;transform:scaleY(.12)}to{opacity:1;transform:scaleY(1)}}
+  @keyframes sbPop{from{opacity:0;transform:scale(0)}60%{opacity:1;transform:scale(1.25)}to{opacity:1;transform:scale(1)}}
+  @media(prefers-reduced-motion:reduce){#splash .sb{animation:none;opacity:1}}
 </style></head><body>
+<div id="splash" aria-hidden="true">
+  <svg viewBox="0 0 120 120" width="104" height="104">
+    <g fill="var(--accent)">
+      <rect class="sb sb1" x="37" y="34" width="10" height="52" rx="5"/>
+      <rect class="sb sb2" x="55" y="45" width="10" height="30" rx="5"/>
+      <rect class="sb sb3" x="73" y="55" width="10" height="10" rx="5"/>
+    </g>
+  </svg>
+</div>
 <svg width="0" height="0" style="position:absolute"><symbol id="mark" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#g)" stroke="#2a3647" stroke-width="1.5"/><g fill="#58d5c9"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></symbol></svg>
 
 <div id="app">
@@ -1562,4 +1582,11 @@ if(LS.get("stilla_theme","dunkel")==="hell")document.documentElement.setAttribut
 applyChatBg();
 me=LS.get("stilla_me",null);
 if(me&&me.signSec){startApp();}else{show("auth");}
+
+/* Start-Splash ausblenden, sobald die drei Striche aufgebaut sind (~1,1s), dann entfernen */
+(function(){
+  var sp=document.getElementById("splash"); if(!sp) return;
+  var reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion:reduce)").matches;
+  setTimeout(function(){ sp.classList.add("gone"); setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); }, 320); }, reduce?350:1100);
+})();
 </script></body></html>
