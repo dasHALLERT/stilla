@@ -356,6 +356,12 @@
     <button id="lockSend" style="max-width:300px">Bestätigungs-E-Mail senden</button>
     <p class="sub" id="lockHint" style="font-size:.74rem"></p>
   </div>
+  <div class="vlock" id="verdone">
+    <span class="logo"><svg><use href="#mark"/></svg></span>
+    <h2 id="verdoneTitle">E-Mail bestätigt ✓</h2>
+    <p class="sub" id="verdoneMsg" style="max-width:32ch"></p>
+    <button id="verdoneBtn" style="max-width:300px">Weiter</button>
+  </div>
 
   <!-- ONBOARDING -->
   <div class="view on" id="auth">
@@ -710,15 +716,20 @@ async function createProfile(){
     startApp();
   }catch(e){err.textContent=(e&&e.message)||"Es ist etwas schiefgegangen.";}
 }
+let regConfirmed=false;
 async function ensureRegistered(){
+  if(!me||!me.signSec) return;
   // schon korrekt registriert? (gleiche Identität)
-  try{const k=await api("/keys?number="+me.number,"GET"); if(k&&!k.error&&k.signPub===me.signPub) return;}catch{}
+  try{const k=await api("/keys?number="+me.number,"GET"); if(k&&!k.error&&k.signPub===me.signPub){regConfirmed=true; if(k.verified&&!me.verified){me.verified=true;LS.set("stilla_me",me);renderBanner();} return;}}catch{}
   // eigene Nummer zurückholen/beanspruchen -> überlebt Server-Neustart
+  let taken=false;
   try{const r=await api("/reclaim","POST",{number:me.number,signPub:me.signPub,kexPub:me.kexPub,name:me.name,avatar:me.avatar||"",status:me.status||""});
-    if(r&&r.ok){ if(r.number)me.number=r.number; LS.set("stilla_me",me); return; }}catch{}
-  // nur falls die Nummer wirklich von jemand anderem gehalten wird: neue Nummer
-  try{const reg=await api("/register","POST",{signPub:me.signPub,kexPub:me.kexPub,name:me.name,avatar:me.avatar||"",status:me.status||""});
-    if(reg&&reg.number){ me.number=reg.number; LS.set("stilla_me",me); }}catch{}
+    if(r&&r.ok){ if(r.number)me.number=r.number; LS.set("stilla_me",me); regConfirmed=true; return; }
+    if(r&&r.taken) taken=true;
+  }catch{ /* Server nicht erreichbar (z.B. Kaltstart) -> Nummer behalten, später erneut */ return; }
+  // NUR wenn die Nummer wirklich von einer ANDEREN Identität gehalten wird: neue Nummer
+  if(taken){ try{const reg=await api("/register","POST",{signPub:me.signPub,kexPub:me.kexPub,name:me.name,avatar:me.avatar||"",status:me.status||""});
+    if(reg&&reg.number){ me.number=reg.number; LS.set("stilla_me",me); regConfirmed=true; } }catch{} }
 }
 /* stabile Besitz-Erkennung einer Nachricht (unabhängig von evtl. wechselnder Nummer) */
 function isMine(m){return m.mine!==undefined?m.mine:(m.from===me.number);}
@@ -816,8 +827,8 @@ async function addByNumber(){
   if(num.length!==9){toast("Bitte eine 9-stellige Nummer.");return;}
   if(num===me.number){toast("Das ist deine eigene Nummer. 🙂");return;}
   if(contacts()[num]){toast("Ihr seid schon verbunden.");$("#peerNum").value="";$("#reqText").value="";closeSheets();openChat(num);return;}
-  if(reqout()[num]){toast("Anfrage läuft schon.");return;}
   if(reqin()[num]){toast(((reqin()[num].name)||"Diese Person")+" hat dir schon eine Anfrage geschickt – nimm sie oben an.");closeSheets();go("home");return;}
+  const alreadyPending=!!reqout()[num];   // schon „läuft" -> dann erneut senden (nicht blockieren)
   const k=await lookupKeys(num);
   if(!k||!k.kexPub){toast("Diese Nummer ist hier nicht registriert.");return;}
   const text=($("#reqText").value||"").trim().slice(0,200);
@@ -825,7 +836,7 @@ async function addByNumber(){
   if(!ok){toast("Konnte nicht senden — kurz später erneut.");return;}
   const ro=reqout();ro[num]={name:k.name||"",kexPub:k.kexPub,avatar:k.avatar||"",status:k.status||"",ts:Date.now()};saveReqout(ro);
   $("#peerNum").value="";$("#reqText").value="";closeSheets();renderContacts();
-  toast("Freundschaftsanfrage gesendet ✓");
+  toast(alreadyPending?"Anfrage erneut gesendet ✓":"Freundschaftsanfrage gesendet ✓");
 }
 async function acceptRequest(num){
   const ri=reqin();const r=ri[num];if(!r)return;
@@ -946,6 +957,7 @@ function closeLightbox(){const vd=$("#lbVid");try{vd.pause();vd.removeAttribute(
 
 async function fetchLoop(){
   if(!me)return;
+  if(!regConfirmed){ await ensureRegistered(); }   // bis Nummer serverseitig bestätigt ist, erneut versuchen
   let r; try{r=await api("/fetch","POST",{number:me.number,invisible:invisibleOn()});}catch{return;}
   const msgs=(r&&r.messages)||[];if(!msgs.length)return;
   const u=unread();let changed=false,openPeerTouched=false,storiesTouched=false,reqTouched=false;const feedTouched={},deliveredTo={},readTo={};
@@ -1384,7 +1396,7 @@ function renderBanner(){
   bn.innerHTML="⚠ E-Mail bestätigen · noch "+verFmtLeft(left)+" · <u>jetzt</u>";
   bn.classList.add("on");app.classList.add("hasbanner");
 }
-function startBannerTimer(){if(verTimer)clearInterval(verTimer);renderBanner();verTimer=setInterval(renderBanner,60000);}
+function startBannerTimer(){if(verTimer)clearInterval(verTimer);renderBanner();syncVerified();verTimer=setInterval(()=>{syncVerified();renderBanner();},60000);}
 async function requestVerify(email,hintEl){
   email=(email||"").trim();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){const m="Bitte eine gültige E-Mail eingeben.";hintEl?hintEl.textContent=m:toast(m);return;}
@@ -1397,13 +1409,31 @@ async function requestVerify(email,hintEl){
   else m="Versand gerade nicht möglich – später erneut.";
   hintEl?hintEl.textContent=m:toast(m);
 }
+function showVerdone(title,msg,isOwner){
+  $("#verdoneTitle").textContent=title;$("#verdoneMsg").textContent=msg;
+  const btn=$("#verdoneBtn");btn.textContent=isOwner?"Weiter":"Verstanden";
+  btn.onclick=()=>{ $("#verdone").classList.remove("on"); if(isOwner){ if(me&&me.signSec){go("home");} } };
+  $("#verdone").classList.add("on");
+}
 async function handleVerifyLink(){
-  const u=new URL(location.href);const tok=u.searchParams.get("verify");if(!tok)return;
-  try{const r=await api("/verify/check","POST",{token:tok});
-    if(r&&r.ok){ if(me&&r.number===me.number){me.verified=true;LS.set("stilla_me",me);toast("E-Mail bestätigt ✓");renderBanner();} else toast("Bestätigt – bitte auf dem Gerät mit diesem Account öffnen."); }
-    else toast("Bestätigungslink ungültig oder abgelaufen.");
-  }catch{}
+  const u=new URL(location.href);const tok=u.searchParams.get("verify");if(!tok)return false;
   u.searchParams.delete("verify");history.replaceState(null,"",u.pathname+u.search+u.hash);
+  let r=null; try{r=await api("/verify/check","POST",{token:tok});}catch{}
+  if(r&&r.ok){
+    // Server hat die Nummer jetzt serverseitig als bestätigt markiert.
+    if(me&&r.number===me.number){ me.verified=true;LS.set("stilla_me",me);renderBanner();if($("#verStatus"))fillVerCard();
+      showVerdone("E-Mail bestätigt ✓","Deine Nummer "+fmt(r.number)+" ist jetzt dauerhaft bestätigt.",true); }
+    else { // anderes Gerät (z.B. Rechner mit E-Mail): KEIN neuer Account, nur Bestätigung
+      showVerdone("E-Mail bestätigt ✓","Nummer "+fmt(r.number)+" ist jetzt bestätigt. Du kannst dieses Fenster schließen und in stilla auf deinem Handy weitermachen."); }
+    return true;
+  }
+  showVerdone("Link ungültig","Dieser Bestätigungslink ist ungültig oder abgelaufen. Fordere in stilla einen neuen an.");
+  return true;
+}
+// Besitzer-Gerät erfährt eine anderswo erfolgte Bestätigung (Nummer bleibt gleich).
+async function syncVerified(){
+  if(!me||me.verified)return;
+  try{const k=await api("/keys?number="+me.number,"GET"); if(k&&k.verified){me.verified=true;LS.set("stilla_me",me);renderBanner();if($("#verStatus"))fillVerCard();}}catch{}
 }
 function fillVerCard(){
   const s=$("#verStatus");
@@ -1620,7 +1650,10 @@ if(LS.get("stilla_theme","dunkel")==="hell")document.documentElement.setAttribut
 {const ac=LS.get("stilla_accent","");if(ac)document.documentElement.style.setProperty("--accent",ac);}
 applyChatBg();
 me=LS.get("stilla_me",null);
-if(me&&me.signSec){startApp();}else{show("auth");}
+const _hasVerifyTok=new URL(location.href).searchParams.get("verify");
+if(me&&me.signSec){ startApp(); }               // startApp ruft handleVerifyLink selbst auf
+else if(_hasVerifyTok){ show("auth"); handleVerifyLink(); }  // fremdes Gerät: nur Bestätigung zeigen, KEIN Zwang zum neuen Account
+else { show("auth"); }
 
 /* Start-Splash ausblenden, sobald die drei Striche aufgebaut sind (~1,1s), dann entfernen */
 (function(){

@@ -20,6 +20,7 @@ function memStore(){
     async init(){},
     async getIdentity(n){ return directory.get(n)?{...directory.get(n)}:null; },
     async hasIdentity(n){ return directory.has(n); },
+    async setVerified(n){ const e=directory.get(n); if(e){ e.verified=true; directory.set(n,e); return true; } return false; },
     async createIdentity(d){
       let n; do{ n=String(crypto.randomInt(100000000,1000000000)); }while(directory.has(n));
       directory.set(n,{signPub:d.signPub,kexPub:d.kexPub,name:d.name||"",avatar:d.avatar||"",status:d.status||""});
@@ -61,6 +62,8 @@ function pgStore(Pool, connectionString){
         sign_pub TEXT, kex_pub TEXT,
         name TEXT DEFAULT '', avatar TEXT DEFAULT '', status TEXT DEFAULT '',
         created_at BIGINT)`);
+      try{ await q(`ALTER TABLE identities ADD COLUMN IF NOT EXISTS verified INTEGER DEFAULT 0`); }catch(_){}
+      try{ await q(`ALTER TABLE identities ADD COLUMN IF NOT EXISTS email TEXT`); }catch(_){}
       await q(`CREATE TABLE IF NOT EXISTS mailbox(
         id SERIAL PRIMARY KEY,
         to_number TEXT, from_number TEXT, envelope TEXT, ts BIGINT)`);
@@ -68,11 +71,12 @@ function pgStore(Pool, connectionString){
       await q(`CREATE TABLE IF NOT EXISTS push_subs(number TEXT PRIMARY KEY, sub TEXT)`);
     },
     async getIdentity(n){
-      const r=await q(`SELECT sign_pub,kex_pub,name,avatar,status FROM identities WHERE number=$1`,[n]);
+      const r=await q(`SELECT sign_pub,kex_pub,name,avatar,status,verified FROM identities WHERE number=$1`,[n]);
       if(!r.rows.length) return null; const x=r.rows[0];
-      return {signPub:x.sign_pub,kexPub:x.kex_pub,name:x.name||"",avatar:x.avatar||"",status:x.status||""};
+      return {signPub:x.sign_pub,kexPub:x.kex_pub,name:x.name||"",avatar:x.avatar||"",status:x.status||"",verified:!!x.verified};
     },
     async hasIdentity(n){ const r=await q(`SELECT 1 FROM identities WHERE number=$1`,[n]); return r.rows.length>0; },
+    async setVerified(n){ const r=await q(`UPDATE identities SET verified=1 WHERE number=$1`,[n]); return r.rowCount>0; },
     async createIdentity(d){
       for(let i=0;i<10000;i++){
         const n=String(crypto.randomInt(100000000,1000000000));

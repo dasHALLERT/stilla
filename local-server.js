@@ -114,9 +114,11 @@ const server = http.createServer(async (req,res)=>{
     const r=await sendVerifyMail(b.email.trim(),b.number);
     return send(res, r.ok?200:502, r); }
 
-  // Bestätigungslink prüfen: gibt die zugehörige Nummer zurück (stateless, per HMAC)
+  // Bestätigungslink prüfen: markiert die Nummer serverseitig als bestätigt (überlebt Gerätewechsel)
   if(req.method==="POST" && p==="/verify/check"){ const b=await body(req);
-    const number=checkToken(b.token||""); return number?send(res,200,{ok:true,number}):send(res,200,{ok:false}); }
+    const number=checkToken(b.token||"");
+    if(number){ try{ await store.setVerified(number); }catch(_){}; return send(res,200,{ok:true,number}); }
+    return send(res,200,{ok:false}); }
 
   if(req.method==="POST" && p==="/register"){ const b=await body(req);
     if(!b.signPub||!b.kexPub) return send(res,400,{error:"keys missing"});
