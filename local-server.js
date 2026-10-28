@@ -100,6 +100,17 @@ async function sendRecoverMail(email,numbers){
   }catch(e){ console.log("Resend-Exception(recover)",e.message); return {ok:false}; }
 }
 
+// Signatur über eine beliebige Textnachricht prüfen (Konto löschen / Nummer ändern)
+function verifyMsg(msg, sigB64, signPubB64){
+  try{
+    return nacl.sign.detached.verify(
+      new Uint8Array(Buffer.from(msg,"utf8")),
+      new Uint8Array(Buffer.from(sigB64,"base64")),
+      new Uint8Array(Buffer.from(signPubB64,"base64"))
+    );
+  }catch{ return false; }
+}
+
 // Login: Ed25519-Signatur per TweetNaCl prüfen (passt zum Client auf jedem Gerät)
 function verifyLogin(signPubB64, nonce, sigB64){
   try{
@@ -182,6 +193,16 @@ const server = http.createServer(async (req,res)=>{
   // Verschlüsselte Sicherung holen (undurchsichtig; ohne Passwort nutzlos)
   if(req.method==="GET" && p==="/backup"){ const n=url.searchParams.get("number");
     const blob=await store.getBackup(n); return send(res,200,{blob:blob||null}); }
+
+  // Konto löschen (nur der Besitzer, per Signatur). Gibt Nummer + E-Mail wieder frei.
+  if(req.method==="POST" && p==="/account/delete"){ const b=await body(req);
+    if(!b.number||!b.signPub||!b.signature) return send(res,400,{error:"missing"});
+    const e=await store.getIdentity(b.number);
+    if(!e) return send(res,200,{ok:true});   // schon weg
+    if(e.signPub!==b.signPub) return send(res,403,{error:"not owner"});
+    if(!verifyMsg("delete:"+b.number,b.signature,b.signPub)) return send(res,401,{error:"bad-signature"});
+    await store.deleteIdentity(b.number);
+    return send(res,200,{ok:true}); }
 
   // Profil aktualisieren (Name, Avatar, Status) — Testversion ohne Signatur-Zwang
   if(req.method==="POST" && p==="/profile"){ const b=await body(req);

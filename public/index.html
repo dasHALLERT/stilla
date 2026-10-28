@@ -276,6 +276,14 @@
   .authtabs{display:flex;gap:6px;width:100%;max-width:300px;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:4px;margin:4px 0 14px}
   .authtabs button{flex:1;background:none;border:none;color:var(--muted);font-weight:600;font-size:.9rem;padding:9px 6px;border-radius:9px;cursor:pointer}
   .authtabs button.sel{background:var(--accent);color:var(--on)}
+  .modal{position:fixed;inset:0;z-index:95;background:rgba(5,8,12,.72);display:none;align-items:center;justify-content:center;padding:20px}
+  .modal.on{display:flex}
+  .modalcard{background:var(--surface);border:1px solid var(--line);border-radius:16px;max-width:360px;width:100%;padding:20px}
+  .modalcard h3{margin:0 0 12px;font-family:Georgia,serif}
+  .modalcard input{width:100%}
+  .modalbtns{display:flex;gap:8px;margin-top:14px}
+  .modalbtns button{flex:1}
+  button.danger-solid{background:var(--bad);color:#2a0b0b;border:none}
   .storyedit{position:absolute;inset:0;z-index:68;background:#000;display:none;flex-direction:column}
   .storyedit.on{display:flex}
   .sehead{display:flex;align-items:center;gap:10px;padding:10px 14px;z-index:3}
@@ -509,12 +517,8 @@
         <input id="setEmail" type="email" placeholder="deine@email.de" autocomplete="email" style="margin-top:10px">
         <button id="verSend" style="margin-top:10px">Bestätigungs-E-Mail senden</button>
         <p class="sub" style="font-size:.74rem;margin:8px 0 0">Innerhalb von 48 h bestätigen, sonst wird die Nummer wieder freigegeben. Absender: stilla.</p>
-        <div id="pwBox" style="display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-          <div style="font-weight:600" id="pwTitle">Passwort für Login auf anderen Geräten</div>
-          <p class="sub" style="font-size:.74rem;margin:4px 0 8px">Damit kannst du dich mit deiner Nummer auf einem neuen Gerät oder in der installierten App einloggen – ohne neue Nummer.</p>
-          <input id="setPw" type="password" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="new-password">
-          <button id="pwSave" style="margin-top:8px">Passwort speichern</button>
-          <p class="sub" id="pwHint" style="font-size:.74rem;margin:8px 0 0"></p>
+        <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+          <button class="ghost" id="pwChangeBtn">Passwort ändern</button>
         </div>
       </div>
 
@@ -554,7 +558,37 @@
 
       <div class="setlbl">KONTO-SITZUNG</div>
       <button class="ghost danger" id="logoutBtn">Ausloggen</button>
-      <p class="sub" style="font-size:.74rem;margin:6px 2px 18px">Zum Wiedereinloggen brauchst du deine Nummer und dein Passwort. Richte das Passwort vorher ein (oben unter „Konto"), sonst kommst du nicht zurück.</p>
+      <p class="sub" style="font-size:.74rem;margin:6px 2px 14px">Zum Wiedereinloggen brauchst du deine Nummer und dein Passwort. Richte das Passwort vorher ein (oben unter „Konto"), sonst kommst du nicht zurück.</p>
+      <button class="ghost danger" id="deleteBtn">Account löschen</button>
+      <p class="sub" style="font-size:.74rem;margin:6px 2px 18px">Löscht dein Konto endgültig und gibt Nummer und E-Mail wieder frei.</p>
+    </div>
+  </div>
+
+  <!-- MODAL: Passwort ändern -->
+  <div class="modal" id="pwModal">
+    <div class="modalcard">
+      <h3>Passwort ändern</h3>
+      <input id="pwOld" type="password" placeholder="Altes Passwort" autocomplete="current-password">
+      <input id="pwNew" type="password" placeholder="Neues Passwort (mind. 6 Zeichen)" autocomplete="new-password" style="margin-top:8px">
+      <input id="pwNew2" type="password" placeholder="Neues Passwort bestätigen" autocomplete="new-password" style="margin-top:8px">
+      <p class="sub" id="pwModalHint" style="font-size:.78rem;margin:8px 0 0"></p>
+      <div class="modalbtns">
+        <button class="ghost" id="pwCancel">Abbrechen</button>
+        <button id="pwConfirm">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Account löschen -->
+  <div class="modal" id="delModal">
+    <div class="modalcard">
+      <h3>Account wirklich löschen?</h3>
+      <p class="sub" style="margin:0">Dein Konto wird endgültig gelöscht. Nummer und E-Mail werden wieder frei. Das lässt sich nicht rückgängig machen.</p>
+      <p class="sub" id="delModalHint" style="font-size:.78rem;margin:8px 0 0"></p>
+      <div class="modalbtns">
+        <button class="ghost" id="delCancel">Nein, behalten</button>
+        <button class="danger-solid" id="delConfirm">Ja, löschen</button>
+      </div>
     </div>
   </div>
 
@@ -1546,8 +1580,7 @@ function fillVerCard(){
   else{const left=verExpiry()-Date.now();s.textContent=left>0?("⏳ Unbestätigt · noch "+verFmtLeft(left)):"⚠ Abgelaufen – bitte bestätigen";s.style.color="var(--bad)";}
   $("#setEmail").value=me.email||"";
   $("#verSend").style.display=me.verified?"none":"";$("#setEmail").style.display=me.verified?"none":"";
-  const pwBox=$("#pwBox"); if(pwBox){ pwBox.style.display="block";
-    $("#pwTitle").textContent=me.hasPw?"Passwort ändern":"Passwort für Login auf anderen Geräten"; }
+  $("#pwChangeBtn").textContent=me.hasPw?"Passwort ändern":"Passwort festlegen";
 }
 
 function startApp(){
@@ -1639,7 +1672,42 @@ async function recoverNumber(email,hintEl){
 }
 $("#recoverBtn").onclick=()=>recoverNumber($("#recoverEmail").value,$("#recoverHint"));
 $("#loginPw").addEventListener("keydown",e=>{if(e.key==="Enter")loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));});
-$("#pwSave").onclick=async()=>{const ok=await setPassword($("#setPw").value,$("#pwHint"));if(ok)$("#setPw").value="";};
+/* ---- Passwort ändern (Pop-up) ---- */
+async function currentBackupBlob(){ try{const r=await api("/backup?number="+me.number,"GET"); return r&&r.blob?r.blob:null;}catch{return null;} }
+async function uploadBackup(password){
+  const blob=await makeBackupBlob(password);
+  const sig=b64(nacl.sign.detached(enc.encode(blob),unb64(me.signSec)));
+  const r=await api("/backup/set","POST",{number:me.number,signPub:me.signPub,signature:sig,blob});
+  return !!(r&&r.ok);
+}
+function openModal(id){$("#"+id).classList.add("on");}
+function closeModal(id){$("#"+id).classList.remove("on");}
+$("#pwChangeBtn").onclick=()=>{$("#pwOld").value="";$("#pwNew").value="";$("#pwNew2").value="";$("#pwModalHint").textContent="";
+  $("#pwOld").style.display=me.hasPw?"":"none";openModal("pwModal");};
+$("#pwCancel").onclick=()=>closeModal("pwModal");
+$("#pwConfirm").onclick=async()=>{
+  const hint=$("#pwModalHint");const oldPw=$("#pwOld").value,n1=$("#pwNew").value,n2=$("#pwNew2").value;
+  if(n1.length<6){hint.textContent="Neues Passwort mindestens 6 Zeichen.";return;}
+  if(n1!==n2){hint.textContent="Die neuen Passwörter stimmen nicht überein.";return;}
+  hint.textContent="Prüfe…";
+  if(me.hasPw){ const blob=await currentBackupBlob(); const ok=blob&&await restoreFromBlob(blob,oldPw);
+    if(!ok){hint.textContent="Altes Passwort falsch.";return;} }
+  const up=await uploadBackup(n1);
+  if(up){me.hasPw=true;LS.set("stilla_me",me);closeModal("pwModal");toast("Passwort geändert ✓");}
+  else hint.textContent="Konnte nicht speichern — später erneut.";
+};
+/* ---- Account löschen (Pop-up) ---- */
+$("#deleteBtn").onclick=()=>{$("#delModalHint").textContent="";openModal("delModal");};
+$("#delCancel").onclick=()=>closeModal("delModal");
+$("#delConfirm").onclick=async()=>{
+  const hint=$("#delModalHint");hint.textContent="Lösche…";
+  const sig=b64(nacl.sign.detached(enc.encode("delete:"+me.number),unb64(me.signSec)));
+  let r;try{r=await api("/account/delete","POST",{number:me.number,signPub:me.signPub,signature:sig});}catch{r=null;}
+  if(r&&r.ok){ try{localStorage.removeItem("stilla_me");}catch{} me=null;
+    if(poll)clearInterval(poll); if(pres)clearInterval(pres); if(verTimer)clearInterval(verTimer);
+    location.reload(); }
+  else hint.textContent="Konnte nicht löschen — später erneut.";
+};
 $("#fab").onclick=()=>{$("#sheetNum").textContent=fmt(me.number);$("#addsheet").classList.add("on");};
 $("#addBtn").onclick=addByNumber;
 $("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")addByNumber();});
