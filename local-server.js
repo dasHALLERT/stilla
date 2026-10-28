@@ -51,7 +51,7 @@ function body(req){ return new Promise(r=>{let d="";req.on("data",c=>d+=c);req.o
 /* ---------- E-Mail-Bestätigung (Resend) ---------- */
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const APP_URL        = process.env.APP_URL || "https://stilla-h5v4.onrender.com";
-const MAIL_FROM      = process.env.MAIL_FROM || "stilla <onboarding@resend.dev>";   // nach Domain-Verifizierung: noreply@getstilla.me
+const MAIL_FROM      = process.env.MAIL_FROM || "stilla <noreply@getstilla.me>";   // getstilla.me ist bei Resend verifiziert
 const VERIFY_SECRET  = process.env.VERIFY_SECRET || crypto.randomBytes(32).toString("hex");  // ideal per ENV
 const b64url = b => Buffer.from(b).toString("base64").replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 function signData(s){ return crypto.createHmac("sha256",VERIFY_SECRET).update(s).digest("base64").replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
@@ -96,7 +96,10 @@ const CLIENT = fs.readFileSync(path.join(__dirname,"public","index.html"));
 const server = http.createServer(async (req,res)=>{
   const url = new URL(req.url,"http://x"); const p = url.pathname;
 
-  if(req.method==="GET" && (p==="/"||p==="/index.html")){ res.writeHead(200,{"Content-Type":"text/html; charset=utf-8"}); return res.end(CLIENT); }
+  if(req.method==="GET" && (p==="/"||p==="/index.html")){ res.writeHead(200,{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-cache, no-store, must-revalidate"}); return res.end(CLIENT); }
+
+  // Keep-Alive-Endpunkt (hält den Gratis-Dienst wach, siehe keepAlive unten)
+  if(req.method==="GET" && p==="/ping"){ res.writeHead(200,{"Content-Type":"text/plain","Cache-Control":"no-cache"}); return res.end("ok"); }
 
   // statische PWA-Dateien
   const STATIC={ "/manifest.json":["manifest.json","application/json; charset=utf-8"], "/sw.js":["sw.js","text/javascript; charset=utf-8"], "/icon-192.png":["icon-192.png","image/png"], "/icon-512.png":["icon-512.png","image/png"], "/apple-touch-icon.png":["apple-touch-icon.png","image/png"] };
@@ -183,3 +186,22 @@ server.listen(PORT,"0.0.0.0",()=>{
   localIPs().forEach(ip=>console.log("  Im WLAN (2. Gerät):  http://"+ip+":"+PORT));
   console.log("\n  Beenden mit Strg+C.\n");
 });
+
+/* Keep-Alive: verhindert, dass der Gratis-Dienst (Render) nach ~15 Minuten
+   einschläft und dabei alle Nummern/Daten aus dem Speicher verliert.
+   Nur aktiv, wenn eine öffentliche URL bekannt ist (Produktion). */
+(function keepAlive(){
+  const url = process.env.APP_URL || "";
+  if(!/^https?:\/\//.test(url)) return;      // lokal: kein Selbst-Ping
+  const https = require("https");
+  const http  = require("http");
+  const pinger = url.startsWith("https") ? https : http;
+  const target = url.replace(/\/+$/,"") + "/ping";
+  setInterval(()=>{
+    try{
+      const req = pinger.get(target,(r)=>{ r.resume(); });
+      req.on("error",()=>{});
+      req.setTimeout(10000,()=>{ req.destroy(); });
+    }catch(_){}
+  }, 10*60*1000);                            // alle 10 Minuten
+})();

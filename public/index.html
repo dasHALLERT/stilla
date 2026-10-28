@@ -10,14 +10,14 @@
 <meta name="apple-mobile-web-app-title" content="stilla">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js"></script>
 <style>
-  :root{--bg:#10151e;--surface:#172030;--s2:#1e2a3a;--line:#2a3647;--fg:#e8eef3;--muted:#8798a8;--accent:#7cc3bb;--on:#07201d;--bad:#e68a8a;color-scheme:dark}
+  :root{--bg:#10151e;--surface:#172030;--s2:#1e2a3a;--line:#2a3647;--fg:#e8eef3;--muted:#8798a8;--accent:#58d5c9;--on:#07201d;--bad:#e68a8a;color-scheme:dark}
   :root[data-t="hell"]{--bg:#eef1f5;--surface:#ffffff;--s2:#f3f6f9;--line:#dce3ea;--fg:#16202b;--muted:#5f6d7c;color-scheme:light}
   *{box-sizing:border-box}html,body{height:100%;margin:0}
   /* Seiten-Scroll sperren: nur die inneren Listen scrollen, untere Leiste + Plus bleiben fix */
   html{overflow:hidden}
   body{background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,"Segoe UI",sans-serif;line-height:1.5;position:fixed;inset:0;overflow:hidden;overscroll-behavior:none}
   #app{max-width:520px;margin:0 auto;height:100%;position:relative;display:flex;flex-direction:column}
-  #app.hasbanner{padding-top:46px}
+  #app.hasbanner .view{top:46px}
   .vbanner{position:absolute;top:0;left:0;right:0;height:46px;background:var(--bad);color:#2a0b0b;display:none;align-items:center;justify-content:center;gap:6px;z-index:60;font-size:.8rem;font-weight:700;padding:6px 12px;cursor:pointer;text-align:center;line-height:1.2}
   .vbanner.on{display:flex}
   .vlock{position:absolute;inset:0;z-index:90;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:28px;text-align:center}
@@ -315,7 +315,7 @@
   #menu button.mi.danger{color:var(--bad)}
   #menu button.mi.cancel{margin-top:6px;font-weight:600}
 </style></head><body>
-<svg width="0" height="0" style="position:absolute"><symbol id="mark" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#g)" stroke="#2a3647" stroke-width="1.5"/><g fill="#7cc3bb"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></symbol></svg>
+<svg width="0" height="0" style="position:absolute"><symbol id="mark" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#g)" stroke="#2a3647" stroke-width="1.5"/><g fill="#58d5c9"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></symbol></svg>
 
 <div id="app">
   <div class="vbanner" id="vbanner"></div>
@@ -1172,7 +1172,7 @@ async function storyLike(){
 
 /* ---------- Story-Editor (Text/Emoji aufs Bild) ---------- */
 const SE_EMOJI=["😀","😂","😍","🥰","😎","😮","😢","😡","👍","🔥","❤️","✨","🎉","💯","🙌","👏","🤝","🌙","⭐","🌈","☀️","💧","🎵","📍","💬","🤫","🕊️","🫶","😴","🥳"];
-const SE_COLORS=["#ffffff","#000000","#7cc3bb","#ffd84d","#ff5a7a","#5aa9ff"];
+const SE_COLORS=["#ffffff","#000000","#58d5c9","#ffd84d","#ff5a7a","#5aa9ff"];
 function openStoryEditor(dataUrl){
   const img=$("#seImg");$("#seCanvas").querySelectorAll(".seov").forEach(e=>e.remove());
   img.onload=()=>{$("#seCanvas").style.aspectRatio=img.naturalWidth+"/"+img.naturalHeight;};
@@ -1378,7 +1378,7 @@ function applyTheme(t){ if(t==="hell")document.documentElement.setAttribute("dat
 function markTheme(t){document.querySelectorAll("#themePick .opt").forEach(o=>o.classList.toggle("sel",o.dataset.th===t));}
 
 /* Akzentfarbe */
-const ACCENTS=["#7cc3bb","#6aa6ff","#b89cff","#7bd389","#ff8fb0","#ffcf5c","#ff8a7a","#58d5c9"];
+const ACCENTS=["#58d5c9","#6aa6ff","#b89cff","#7bd389","#ff8fb0","#ffcf5c","#ff8a7a"];
 function applyAccent(hex){document.documentElement.style.setProperty("--accent",hex);LS.set("stilla_accent",hex);document.querySelectorAll("#accentRow .swatch").forEach(s=>s.classList.toggle("sel",s.dataset.c===hex));}
 function buildAccents(){const row=$("#accentRow");row.innerHTML="";const cur=LS.get("stilla_accent",ACCENTS[0]);
   ACCENTS.forEach(hex=>{const b=document.createElement("button");b.className="swatch"+(hex===cur?" sel":"");b.dataset.c=hex;b.style.background=hex;b.onclick=()=>applyAccent(hex);row.appendChild(b);});}
@@ -1507,7 +1507,7 @@ $("#compShare").onclick=doShare;
 $("#compDesc").addEventListener("input",()=>{$("#compCount").textContent=$("#compDesc").value.length;});
 $("#storyFile").onchange=async e=>{const fs=e.target.files;e.target.value="";
   if(!fs||!fs.length)return;
-  if(fs.length===1&&(fs[0].type||"").startsWith("image/")){ try{const d=await shrinkImage(fs[0]);openStoryEditor(d);}catch(err){toast("Bild konnte nicht geladen werden.");} }
+  if(fs.length===1){ try{const d=await shrinkImage(fs[0]);openStoryEditor(d);}catch(err){toast("Bild konnte nicht geladen werden.");} }
   else addStory(fs);   // mehrere -> Album ohne Editor
 };
 $("#seCancel").onclick=closeStoryEditor;
