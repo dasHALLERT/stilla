@@ -13,7 +13,7 @@
   /* stilla landing/download page — quiet, safe night-room. Single deliberate dark world. */
   :root{
     --bg:#10151e; --surface:#172030; --surface-2:#1e2a3a; --line:#2a3647;
-    --fg:#e8eef3; --muted:#8798a8; --accent:#7cc3bb; --on-accent:#07201d; --soft:rgba(124,195,187,.13);
+    --fg:#e8eef3; --muted:#8798a8; --accent:#58d5c9; --on-accent:#07201d; --soft:rgba(88,213,201,.13);
     --green:#4ad07d; --green-on:#06240f; --green-soft:rgba(74,208,125,.14);
     --font-display:"Fraunces",Georgia,serif; --font-body:"Hanken Grotesk",system-ui,sans-serif; --font-mono:"Spline Sans Mono",ui-monospace,monospace;
     color-scheme:dark;
@@ -21,7 +21,7 @@
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{background:var(--bg);color:var(--fg);font-family:var(--font-body);line-height:1.6;margin:0;
-    background-image:radial-gradient(1100px 560px at 82% -12%,rgba(124,195,187,.1),transparent 60%),radial-gradient(900px 520px at 12% 2%,rgba(74,208,125,.09),transparent 60%);}
+    background-image:radial-gradient(1100px 560px at 82% -12%,rgba(88,213,201,.1),transparent 60%),radial-gradient(900px 520px at 12% 2%,rgba(88,213,201,.07),transparent 60%);}
   .wrap{max-width:860px;margin:0 auto;
     padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));}
   a{color:var(--accent)}
@@ -36,8 +36,8 @@
   h1{font-family:var(--font-display);font-weight:500;font-size:clamp(2rem,6vw,3.1rem);line-height:1.1;margin:0 0 14px;text-wrap:balance}
   header p{color:var(--muted);font-size:1.1rem;max-width:34ch;margin:0 auto 10px}
   .trust{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:22px}
-  .trust span{font-family:var(--font-mono);font-size:.74rem;color:var(--fg);background:var(--green-soft);
-    border:1px solid rgba(74,208,125,.35);border-radius:8px;padding:6px 11px}
+  .trust span{font-family:var(--font-mono);font-size:.74rem;color:var(--fg);background:var(--soft);
+    border:1px solid rgba(88,213,201,.3);border-radius:8px;padding:6px 11px}
   .trust span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:7px;vertical-align:middle}
 
   section{padding-block:30px}
@@ -53,8 +53,8 @@
     section{padding-block:22px}nav{padding-block:16px 8px}
     .how{padding:20px 18px}.testcta{padding:15px 24px;font-size:.98rem}
   }
-  .testcta{display:inline-flex;align-items:center;gap:11px;margin-top:24px;padding:16px 34px;border-radius:999px;background:var(--green);color:var(--green-on);font-family:var(--font-mono);font-weight:700;font-size:1.05rem;letter-spacing:.01em;text-decoration:none;cursor:pointer;animation:ctapulse 1.7s ease-out infinite}
-  .testcta .dot{width:10px;height:10px;border-radius:50%;background:var(--green-on);animation:ctablink 1s steps(1,end) infinite}
+  .testcta{display:inline-flex;align-items:center;gap:11px;margin-top:24px;padding:16px 34px;border-radius:999px;background:var(--accent);color:var(--on-accent);border:1.5px solid var(--green);font-family:var(--font-mono);font-weight:700;font-size:1.05rem;letter-spacing:.01em;text-decoration:none;cursor:pointer;animation:ctapulse 1.7s ease-out infinite}
+  .testcta .dot{width:10px;height:10px;border-radius:50%;background:var(--green);animation:ctablink 1s steps(1,end) infinite}
   .testcta:hover{filter:brightness(1.06)}
   .cta-note{color:var(--muted);font-size:.84rem;margin-top:10px;font-family:var(--font-mono)}
   /* kleiner Test-Link oben in der Leiste */
@@ -71,8 +71,7 @@
   .dl[data-plat]{cursor:pointer;transition:border-color .15s,transform .1s}
   .dl[data-plat]:hover{border-color:var(--green)}
   .dl[data-plat]:active{transform:scale(.99)}
-  .dl .ico{color:var(--green)}
-  .dl .btn{margin-top:12px;background:var(--green);border:1px solid var(--green);color:var(--green-on);
+  .dl .btn{margin-top:12px;background:var(--accent);border:1px solid var(--accent);color:var(--on-accent);
     border-radius:10px;padding:10px;text-align:center;font-weight:700;font-size:.86rem;cursor:pointer}
   /* Installations-Anleitung (Overlay) */
   .imodal{position:fixed;inset:0;z-index:50;background:rgba(5,8,12,.78);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px}
@@ -87,6 +86,7 @@
 
   .how{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px 24px;margin-top:8px}
   .how ol{margin:0;padding-left:20px}
+  .how ol li::marker,.icard ol li::marker{color:var(--green);font-weight:700}
   .how li{margin:10px 0;color:var(--fg)}
   .how li b{color:var(--fg)}
   .how .mono{font-family:var(--font-mono);font-size:.82em;color:var(--accent)}
@@ -109,14 +109,14 @@
 
 <div class="wrap">
   <nav>
-    <svg width="26" height="26" viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#n)" stroke="#2a3647" stroke-width="1.5"/><g fill="#7cc3bb"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></svg>
+    <svg width="26" height="26" viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="n" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#n)" stroke="#2a3647" stroke-width="1.5"/><g fill="#58d5c9"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></svg>
     <span class="word">stilla</span>
     <a class="navtest" href="https://stilla-h5v4.onrender.com" target="_blank" rel="noopener">App testen ↗</a>
   </nav>
 
   <header>
     <div class="mark">
-      <svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#h)" stroke="#2a3647" stroke-width="1.5"/><g fill="#7cc3bb"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></svg>
+      <svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2636"/><stop offset="1" stop-color="#0e131c"/></linearGradient></defs><rect x="4" y="4" width="112" height="112" rx="28" fill="url(#h)" stroke="#2a3647" stroke-width="1.5"/><g fill="#58d5c9"><rect x="37" y="34" width="10" height="52" rx="5"/><rect x="55" y="45" width="10" height="30" rx="5"/><rect x="73" y="55" width="10" height="10" rx="5"/></g></svg>
     </div>
     <h1>Ein stiller, sicherer Ort zum Reden.</h1>
     <p>Kein Feed, kein Lärm. Nur verschlüsselte Gespräche — ohne Handynummer, ohne App-Store. Deine Schlüssel bleiben auf deinem Gerät.</p>
