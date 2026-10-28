@@ -60,6 +60,12 @@ function checkToken(tok){ try{ const i=tok.lastIndexOf("."); const b=tok.slice(0
   const p=Buffer.from(b.replace(/-/g,"+").replace(/_/g,"/"),"base64").toString();
   if(signData(p)!==sig) return null; const [number,exp]=p.split("."); if(Date.now()>Number(exp)) return null; return number;
 }catch{ return null; } }
+// Reset-Token: eigenes Format mit "reset"-Kennung, 2 h gültig (nur fürs Passwort-Zurücksetzen)
+function makeResetToken(number){ const p=number+".reset."+(Date.now()+2*3600*1000); return b64url(p)+"."+signData(p); }
+function checkResetToken(tok){ try{ const i=tok.lastIndexOf("."); const b=tok.slice(0,i), sig=tok.slice(i+1);
+  const p=Buffer.from(b.replace(/-/g,"+").replace(/_/g,"/"),"base64").toString();
+  if(signData(p)!==sig) return null; const [number,kind,exp]=p.split("."); if(kind!=="reset") return null; if(Date.now()>Number(exp)) return null; return number;
+}catch{ return null; } }
 const validEmail = e => typeof e==="string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e.length<=120;
 async function sendVerifyMail(email,number){
   if(!RESEND_API_KEY) return {ok:false,error:"email-disabled"};
@@ -80,6 +86,25 @@ async function sendVerifyMail(email,number){
   }catch(e){ console.log("Resend-Exception",e.message); return {ok:false,error:"send-exception"}; }
 }
 function fmtNum(n){ return String(n).replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3"); }
+async function sendResetMail(email,number){
+  if(!RESEND_API_KEY) return {ok:false,error:"email-disabled"};
+  const link=APP_URL+"/?reset="+encodeURIComponent(makeResetToken(number));
+  const html=`<div style="font-family:system-ui,sans-serif;background:#10151e;color:#e8eef3;padding:28px;border-radius:14px;max-width:460px;margin:auto">
+    <h2 style="font-family:Georgia,serif;color:#e8eef3">stilla</h2>
+    <p>Du möchtest das Passwort für Nummer <b>${fmtNum(number)}</b> zurücksetzen. Klick auf den Button, um ein neues Passwort zu vergeben:</p>
+    <p><a href="${link}" style="display:inline-block;background:#58d5c9;color:#07201d;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:10px">Passwort neu setzen</a></p>
+    <p style="color:#8798a8;font-size:13px">Oder diesen Link öffnen:<br>${link}</p>
+    <p style="color:#8798a8;font-size:12px">Der Link gilt 2 Stunden. Wenn du das nicht warst, ignoriere diese E-Mail – dein Konto bleibt unverändert.</p>
+  </div>`;
+  const text="Passwort für stilla-Nummer "+fmtNum(number)+" zurücksetzen: "+link;
+  try{
+    const r=await fetch("https://api.resend.com/emails",{method:"POST",
+      headers:{"Authorization":"Bearer "+RESEND_API_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({from:MAIL_FROM,to:[email],subject:"stilla – Passwort zurücksetzen",html,text})});
+    if(r.ok) return {ok:true};
+    const t=await r.text(); console.log("Resend-Fehler(reset)",r.status,t); return {ok:false};
+  }catch(e){ console.log("Resend-Exception(reset)",e.message); return {ok:false}; }
+}
 async function sendRecoverMail(email,numbers){
   if(!RESEND_API_KEY) return {ok:false,error:"email-disabled"};
   const list=numbers.map(n=>`<div style="font-family:ui-monospace,monospace;font-size:20px;letter-spacing:2px;color:#58d5c9;margin:6px 0">${fmtNum(n)}</div>`).join("");
@@ -172,6 +197,29 @@ const server = http.createServer(async (req,res)=>{
   if(req.method==="POST" && p==="/email-taken"){ const b=await body(req);
     let taken=false; try{ taken=await store.emailExists((b.email||"").trim()); }catch(_){}
     return send(res,200,{taken}); }
+
+  // Passwort zurücksetzen anfordern: Reset-Link an die E-Mail des Kontos. Antwort generisch.
+  if(req.method==="POST" && p==="/reset/request"){ const b=await body(req);
+    const number=(b.number||"").replace(/\D/g,"");
+    if(/^\d{9}$/.test(number)){
+      try{ const e=await store.getIdentity(number); if(e && e.email) await sendResetMail(e.email,number); }catch(_){}
+    }
+    return send(res,200,{ok:true}); }
+
+  // Reset-Token auflösen (welche Nummer gehört dazu?) – für den Aufbau des neuen Backups.
+  if(req.method==="GET" && p==="/reset/resolve"){ const number=checkResetToken(url.searchParams.get("token")||"");
+    return send(res,200,{number:number||null}); }
+
+  // Passwort-Reset abschließen: gültiger Link -> neue Schlüssel + neues verschlüsseltes Backup.
+  if(req.method==="POST" && p==="/reset/complete"){ const b=await body(req);
+    const number=checkResetToken(b.token||"");
+    if(!number) return send(res,200,{ok:false,error:"bad-token"});
+    if(!b.signPub||!b.kexPub||!b.blob) return send(res,400,{error:"missing"});
+    const e=await store.getIdentity(number);
+    if(!e) return send(res,404,{error:"unknown"});
+    await store.putIdentity(number,{signPub:b.signPub,kexPub:b.kexPub,name:e.name,avatar:e.avatar,status:e.status,email:e.email,verified:e.verified});
+    await store.setBackup(number,String(b.blob).slice(0,300000));
+    return send(res,200,{ok:true,number,name:e.name||"",avatar:e.avatar||"",status:e.status||"",email:e.email||""}); }
 
   if(req.method==="POST" && p==="/register"){ const b=await body(req);
     if(!b.signPub||!b.kexPub) return send(res,400,{error:"keys missing"});

@@ -375,6 +375,15 @@
     <p class="sub" id="verdoneMsg" style="max-width:32ch"></p>
     <button id="verdoneBtn" style="max-width:300px">Weiter</button>
   </div>
+  <div class="vlock" id="resetScreen">
+    <span class="logo"><svg><use href="#mark"/></svg></span>
+    <h2>Neues Passwort setzen</h2>
+    <p class="sub" style="max-width:32ch">Vergib ein neues Passwort für dein Konto. Danach bist du direkt eingeloggt.</p>
+    <input id="resetPw1" type="password" placeholder="Neues Passwort (mind. 6 Zeichen)" autocomplete="new-password" style="max-width:300px">
+    <input id="resetPw2" type="password" placeholder="Neues Passwort bestätigen" autocomplete="new-password" style="max-width:300px;margin-top:8px">
+    <button id="resetDoBtn" style="max-width:300px;margin-top:10px">Passwort speichern &amp; einloggen</button>
+    <p class="sub" id="resetScreenHint" style="font-size:.74rem"></p>
+  </div>
 
   <!-- ONBOARDING -->
   <div class="view on" id="auth">
@@ -405,6 +414,12 @@
         <input class="fld" id="recoverEmail" type="email" placeholder="Deine E-Mail-Adresse" autocomplete="email">
         <button class="fld" id="recoverBtn" style="margin-top:8px;max-width:none">Nummer per E-Mail senden</button>
         <p class="sub" id="recoverHint" style="font-size:.74rem;margin-top:6px"></p>
+      </div>
+      <button class="linkbtn" id="toReset" type="button" style="margin-top:2px;align-self:center">Passwort zurücksetzen</button>
+      <div id="resetBox" style="display:none;margin-top:6px">
+        <input class="fld" id="resetNum" inputmode="numeric" placeholder="Deine 9-stellige Nummer">
+        <button class="fld" id="resetReqBtn" style="margin-top:8px;max-width:none">Weiter</button>
+        <p class="sub" id="resetHint" style="font-size:.74rem;margin-top:6px">Wir schicken einen Reset-Link an die hinterlegte E-Mail. Nur darüber lässt sich ein neues Passwort setzen.</p>
       </div>
     </div>
     <p class="sub" style="font-size:.74rem;color:var(--bad);margin-top:14px">Test-Version — keine echten Geheimnisse.</p>
@@ -1676,6 +1691,42 @@ async function recoverNumber(email,hintEl){
   say("Falls ein Konto mit dieser E-Mail existiert, haben wir dir die Nummer geschickt. Posteingang (ggf. Spam) prüfen.");
 }
 $("#recoverBtn").onclick=()=>recoverNumber($("#recoverEmail").value,$("#recoverHint"));
+/* ---- Passwort zurücksetzen (per E-Mail-Link) ---- */
+$("#toReset").onclick=()=>{const b=$("#resetBox");b.style.display=(b.style.display==="none"?"block":"none");if(b.style.display!=="none")$("#resetNum").focus();};
+async function requestPasswordReset(num,hintEl){
+  num=(num||"").replace(/\D/g,"");
+  if(num.length!==9){hintEl.textContent="Bitte eine 9-stellige Nummer.";return;}
+  hintEl.textContent="Sende…";
+  try{await api("/reset/request","POST",{number:num});}catch{}
+  hintEl.textContent="Falls zu dieser Nummer eine E-Mail hinterlegt ist, haben wir dir einen Reset-Link geschickt. Posteingang (ggf. Spam) prüfen.";
+}
+$("#resetReqBtn").onclick=()=>requestPasswordReset($("#resetNum").value,$("#resetHint"));
+let _resetToken=null;
+function handleResetLink(){
+  const u=new URL(location.href);const tok=u.searchParams.get("reset");if(!tok)return false;
+  u.searchParams.delete("reset");history.replaceState(null,"",u.pathname+u.search+u.hash);
+  _resetToken=tok;$("#resetPw1").value="";$("#resetPw2").value="";$("#resetScreenHint").textContent="";
+  $("#resetScreen").classList.add("on");return true;
+}
+async function doPasswordReset(){
+  const hint=$("#resetScreenHint");const p1=$("#resetPw1").value,p2=$("#resetPw2").value;
+  if(p1.length<6){hint.textContent="Passwort mindestens 6 Zeichen.";return;}
+  if(p1!==p2){hint.textContent="Die Passwörter stimmen nicht überein.";return;}
+  if(!_resetToken){hint.textContent="Link ungültig – fordere einen neuen an.";return;}
+  hint.textContent="Setze neues Passwort…";
+  let rv;try{rv=await api("/reset/resolve?token="+encodeURIComponent(_resetToken),"GET");}catch{rv=null;}
+  if(!rv||!rv.number){hint.textContent="Der Link ist ungültig oder abgelaufen. Fordere einen neuen an.";return;}
+  const id=newIdentity("");
+  me={number:rv.number,...id,createdAt:Date.now(),verified:true,email:"",hasPw:true};
+  let blob;try{blob=await makeBackupBlob(p1);}catch{me=null;hint.textContent="Fehler beim Verschlüsseln.";return;}
+  let r;try{r=await api("/reset/complete","POST",{token:_resetToken,signPub:me.signPub,kexPub:me.kexPub,blob});}catch{r=null;}
+  if(r&&r.ok){
+    me.name=r.name||"";me.avatar=r.avatar||"";me.status=r.status||"";me.email=r.email||"";
+    LS.set("stilla_me",me);_resetToken=null;regConfirmed=true;
+    $("#resetScreen").classList.remove("on");startApp();toast("Passwort neu gesetzt ✓");
+  }else{ me=null; hint.textContent=(r&&r.error==="bad-token")?"Der Link ist ungültig oder abgelaufen.":"Konnte nicht zurücksetzen — später erneut."; }
+}
+$("#resetDoBtn").onclick=doPasswordReset;
 $("#loginPw").addEventListener("keydown",e=>{if(e.key==="Enter")loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));});
 /* ---- Passwort ändern (Pop-up) ---- */
 async function currentBackupBlob(){ try{const r=await api("/backup?number="+me.number,"GET"); return r&&r.blob?r.blob:null;}catch{return null;} }
@@ -1862,8 +1913,11 @@ if(LS.get("stilla_theme","dunkel")==="hell")document.documentElement.setAttribut
 {const ac=LS.get("stilla_accent","");if(ac)document.documentElement.style.setProperty("--accent",ac);}
 applyChatBg();
 me=LS.get("stilla_me",null);
-const _hasVerifyTok=new URL(location.href).searchParams.get("verify");
-if(me&&me.signSec){ startApp(); }               // startApp ruft handleVerifyLink selbst auf
+const _url0=new URL(location.href);
+const _hasVerifyTok=_url0.searchParams.get("verify");
+const _hasResetTok=_url0.searchParams.get("reset");
+if(_hasResetTok){ show("auth"); handleResetLink(); }         // Reset-Link: neues Passwort setzen (auch ohne Konto)
+else if(me&&me.signSec){ startApp(); }                       // startApp ruft handleVerifyLink selbst auf
 else if(_hasVerifyTok){ show("auth"); handleVerifyLink(); }  // fremdes Gerät: nur Bestätigung zeigen, KEIN Zwang zum neuen Account
 else { show("auth"); }
 
