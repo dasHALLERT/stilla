@@ -30,6 +30,8 @@ function memStore(){
       for(const [num,e] of directory){ if(e.email===email) out.push(num); } return out; },
     async emailExists(email){ email=(email||"").toLowerCase(); if(!email) return false;
       for(const [,e] of directory){ if(e.email===email) return true; } return false; },
+    async emailVerifiedElsewhere(email,exceptNumber){ email=(email||"").toLowerCase(); if(!email) return false;
+      for(const [num,e] of directory){ if(num!==exceptNumber && e.email===email && e.verified) return true; } return false; },
     async createIdentity(d){
       let n; do{ n=String(crypto.randomInt(100000000,1000000000)); }while(directory.has(n));
       directory.set(n,{signPub:d.signPub,kexPub:d.kexPub,name:d.name||"",avatar:d.avatar||"",status:d.status||""});
@@ -112,6 +114,8 @@ function pgStore(Pool, connectionString){
     },
     async numbersForEmail(email){ const r=await q(`SELECT number FROM identities WHERE lower(email)=$1`,[(email||"").toLowerCase()]); return r.rows.map(x=>x.number); },
     async emailExists(email){ if(!email) return false; const r=await q(`SELECT 1 FROM identities WHERE lower(email)=$1 LIMIT 1`,[(email||"").toLowerCase()]); return r.rows.length>0; },
+    async emailVerifiedElsewhere(email,exceptNumber){ if(!email) return false;
+      const r=await q(`SELECT 1 FROM identities WHERE lower(email)=$1 AND verified<>0 AND number<>$2 LIMIT 1`,[(email||"").toLowerCase(),exceptNumber||""]); return r.rows.length>0; },
     async createIdentity(d){
       for(let i=0;i<10000;i++){
         const n=String(crypto.randomInt(100000000,1000000000));

@@ -1544,6 +1544,7 @@ async function requestVerify(email,hintEl){
   let r;try{r=await api("/verify/request","POST",{number:me.number,email});}catch{r=null;}
   let m;
   if(r&&r.ok)m="E-Mail an "+email+" gesendet – Posteingang (ggf. Spam) prüfen und Link öffnen.";
+  else if(r&&r.error==="email-taken")m="Diese E-Mail-Adresse ist bereits bei einem anderen Konto bestätigt.";
   else if(r&&r.error==="email-disabled")m="E-Mail-Versand ist serverseitig noch nicht aktiv.";
   else m="Versand gerade nicht möglich – später erneut.";
   hintEl?hintEl.textContent=m:toast(m);
@@ -1564,6 +1565,10 @@ async function handleVerifyLink(){
       showVerdone("E-Mail bestätigt ✓","Deine Nummer "+fmt(r.number)+" ist jetzt dauerhaft bestätigt.",true); }
     else { // anderes Gerät (z.B. Rechner mit E-Mail): KEIN neuer Account, nur Bestätigung
       showVerdone("E-Mail bestätigt ✓","Nummer "+fmt(r.number)+" ist jetzt bestätigt. Du kannst dieses Fenster schließen und in stilla auf deinem Handy weitermachen."); }
+    return true;
+  }
+  if(r&&r.error==="email-taken"){
+    showVerdone("E-Mail bereits vergeben","Diese E-Mail-Adresse ist schon bei einem anderen Konto bestätigt. Pro E-Mail gibt es nur ein Konto.");
     return true;
   }
   showVerdone("Link ungültig","Dieser Bestätigungslink ist ungültig oder abgelaufen. Fordere in stilla einen neuen an.");

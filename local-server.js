@@ -142,6 +142,8 @@ const server = http.createServer(async (req,res)=>{
   // E-Mail-Bestätigung anfordern: schickt eine Mail mit Bestätigungslink
   if(req.method==="POST" && p==="/verify/request"){ const b=await body(req);
     if(!b.number||!validEmail(b.email)) return send(res,400,{error:"bad-input"});
+    // eine E-Mail = ein Konto: ist sie schon bei einem ANDEREN Konto bestätigt? -> ablehnen
+    try{ if(await store.emailVerifiedElsewhere(b.email.trim(),b.number)) return send(res,200,{ok:false,error:"email-taken"}); }catch(_){}
     try{ await store.setEmail(b.number,b.email.trim()); }catch(_){}   // E-Mail der Nummer zuordnen (für Wiederherstellung)
     const r=await sendVerifyMail(b.email.trim(),b.number);
     return send(res, r.ok?200:502, r); }
@@ -158,7 +160,12 @@ const server = http.createServer(async (req,res)=>{
   // Bestätigungslink prüfen: markiert die Nummer serverseitig als bestätigt (überlebt Gerätewechsel)
   if(req.method==="POST" && p==="/verify/check"){ const b=await body(req);
     const number=checkToken(b.token||"");
-    if(number){ try{ await store.setVerified(number); }catch(_){}; return send(res,200,{ok:true,number}); }
+    if(number){
+      // eine E-Mail = ein Konto: beim Bestätigen prüfen, ob die E-Mail schon woanders bestätigt ist
+      try{ const e=await store.getIdentity(number);
+        if(e && e.email && await store.emailVerifiedElsewhere(e.email,number)) return send(res,200,{ok:false,error:"email-taken"}); }catch(_){}
+      try{ await store.setVerified(number); }catch(_){}
+      return send(res,200,{ok:true,number}); }
     return send(res,200,{ok:false}); }
 
   // Prüfen, ob eine E-Mail schon für ein Konto benutzt wird (eine E-Mail = ein Konto)
