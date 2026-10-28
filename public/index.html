@@ -392,6 +392,12 @@
       <input class="fld" id="loginPw" type="password" placeholder="Passwort" autocomplete="current-password" style="margin-top:8px">
       <button class="fld" id="loginBtn" style="margin-top:10px;max-width:none">Einloggen</button>
       <p class="sub" id="loginHint" style="font-size:.74rem;margin-top:6px"></p>
+      <button class="linkbtn" id="toRecover" type="button" style="margin-top:2px;align-self:center">Nummer vergessen?</button>
+      <div id="recoverBox" style="display:none;margin-top:6px">
+        <input class="fld" id="recoverEmail" type="email" placeholder="Deine E-Mail-Adresse" autocomplete="email">
+        <button class="fld" id="recoverBtn" style="margin-top:8px;max-width:none">Nummer per E-Mail senden</button>
+        <p class="sub" id="recoverHint" style="font-size:.74rem;margin-top:6px"></p>
+      </div>
     </div>
     <p class="sub" style="font-size:.74rem;color:var(--bad);margin-top:14px">Test-Version — keine echten Geheimnisse.</p>
   </div>
@@ -1620,6 +1626,16 @@ function authMode(m){
 $("#tabReg").onclick=()=>authMode("reg");
 $("#tabLogin").onclick=()=>authMode("login");
 $("#loginBtn").onclick=()=>loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));
+$("#toRecover").onclick=()=>{const b=$("#recoverBox");b.style.display=(b.style.display==="none"?"block":"none");if(b.style.display!=="none")$("#recoverEmail").focus();};
+async function recoverNumber(email,hintEl){
+  const say=m=>hintEl.textContent=m;
+  email=(email||"").trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){say("Bitte eine gültige E-Mail eingeben.");return;}
+  say("Sende…");
+  try{await api("/recover","POST",{email});}catch{}
+  say("Falls ein bestätigtes Konto mit dieser E-Mail existiert, haben wir dir die Nummer geschickt. Posteingang (ggf. Spam) prüfen.");
+}
+$("#recoverBtn").onclick=()=>recoverNumber($("#recoverEmail").value,$("#recoverHint"));
 $("#loginPw").addEventListener("keydown",e=>{if(e.key==="Enter")loginWithNumber($("#loginNum").value,$("#loginPw").value,$("#loginHint"));});
 $("#pwSave").onclick=async()=>{const ok=await setPassword($("#setPw").value,$("#pwHint"));if(ok)$("#setPw").value="";};
 $("#fab").onclick=()=>{$("#sheetNum").textContent=fmt(me.number);$("#addsheet").classList.add("on");};

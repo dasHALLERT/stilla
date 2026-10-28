@@ -79,6 +79,26 @@ async function sendVerifyMail(email,number){
     const t=await r.text(); console.log("Resend-Fehler",r.status,t); return {ok:false,error:"send-failed",status:r.status};
   }catch(e){ console.log("Resend-Exception",e.message); return {ok:false,error:"send-exception"}; }
 }
+function fmtNum(n){ return String(n).replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3"); }
+async function sendRecoverMail(email,numbers){
+  if(!RESEND_API_KEY) return {ok:false,error:"email-disabled"};
+  const list=numbers.map(n=>`<div style="font-family:ui-monospace,monospace;font-size:20px;letter-spacing:2px;color:#58d5c9;margin:6px 0">${fmtNum(n)}</div>`).join("");
+  const html=`<div style="font-family:system-ui,sans-serif;background:#10151e;color:#e8eef3;padding:28px;border-radius:14px;max-width:460px;margin:auto">
+    <h2 style="font-family:Georgia,serif;color:#e8eef3">stilla</h2>
+    <p>Hier ist ${numbers.length>1?"sind deine stilla-Nummern":"deine stilla-Nummer"}:</p>
+    ${list}
+    <p style="color:#8798a8;font-size:13px">Zum Einloggen: stilla öffnen → „Einloggen" → Nummer und Passwort eingeben.</p>
+    <p style="color:#8798a8;font-size:12px">Wenn du das nicht angefordert hast, ignoriere diese E-Mail einfach.</p>
+  </div>`;
+  const text="Deine stilla-Nummer(n): "+numbers.map(fmtNum).join(", ")+" — Einloggen mit Nummer und Passwort.";
+  try{
+    const r=await fetch("https://api.resend.com/emails",{method:"POST",
+      headers:{"Authorization":"Bearer "+RESEND_API_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({from:MAIL_FROM,to:[email],subject:"stilla – deine Nummer",html,text})});
+    if(r.ok) return {ok:true};
+    const t=await r.text(); console.log("Resend-Fehler(recover)",r.status,t); return {ok:false};
+  }catch(e){ console.log("Resend-Exception(recover)",e.message); return {ok:false}; }
+}
 
 // Login: Ed25519-Signatur per TweetNaCl prüfen (passt zum Client auf jedem Gerät)
 function verifyLogin(signPubB64, nonce, sigB64){
@@ -111,8 +131,18 @@ const server = http.createServer(async (req,res)=>{
   // E-Mail-Bestätigung anfordern: schickt eine Mail mit Bestätigungslink
   if(req.method==="POST" && p==="/verify/request"){ const b=await body(req);
     if(!b.number||!validEmail(b.email)) return send(res,400,{error:"bad-input"});
+    try{ await store.setEmail(b.number,b.email.trim()); }catch(_){}   // E-Mail der Nummer zuordnen (für Wiederherstellung)
     const r=await sendVerifyMail(b.email.trim(),b.number);
     return send(res, r.ok?200:502, r); }
+
+  // Nummer vergessen: schickt die Nummer(n) an die E-Mail – nur wenn dort ein bestätigtes Konto liegt.
+  // Antwort immer generisch, damit niemand fremde E-Mails/Nummern ausprobieren kann.
+  if(req.method==="POST" && p==="/recover"){ const b=await body(req);
+    if(validEmail(b.email)){
+      try{ const nums=await store.numbersForEmail(b.email.trim());
+        if(nums.length) await sendRecoverMail(b.email.trim(),nums); }catch(_){}
+    }
+    return send(res,200,{ok:true}); }
 
   // Bestätigungslink prüfen: markiert die Nummer serverseitig als bestätigt (überlebt Gerätewechsel)
   if(req.method==="POST" && p==="/verify/check"){ const b=await body(req);
