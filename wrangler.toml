@@ -1,0 +1,16 @@
+name = "stilla"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Statische Dateien (index.html, manifest.json, sw.js, Icons) aus public/
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Nicht-geheime Variablen. GEHEIM (im Dashboard als "Secret" setzen, NICHT hier):
+#   DATABASE_URL, RESEND_API_KEY, VERIFY_SECRET
+# APP_URL ist optional – ohne Angabe nutzt der Worker automatisch seine eigene
+# Adresse für die E-Mail-Links. Nur setzen, wenn du eine eigene Domain nutzt.
+[vars]
+MAIL_FROM = "stilla <noreply@getstilla.me>"

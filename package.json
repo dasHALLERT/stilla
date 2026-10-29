@@ -6,12 +6,17 @@
   "type": "commonjs",
   "main": "local-server.js",
   "scripts": {
-    "start": "node local-server.js"
+    "start": "node local-server.js",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@neondatabase/serverless": "0.10.4",
     "pg": "8.13.1",
     "tweetnacl": "1.0.3",
     "web-push": "3.6.7"
+  },
+  "devDependencies": {
+    "wrangler": "3.90.0"
   },
   "engines": {
     "node": ">=18"

@@ -1,0 +1,13 @@
+name: keep-alive
+# Hält den Render-Gratis-Dienst wach (Brücke, bis stilla auf Cloudflare läuft).
+# Pingt die App von außen an, damit sie nicht nach 15 Min einschläft.
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # alle 10 Minuten
+  workflow_dispatch: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping stilla
+        run: curl -fsS --max-time 60 https://stilla-h5v4.onrender.com/ping || true

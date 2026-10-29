@@ -12,6 +12,14 @@
  */
 const crypto = require("node:crypto");
 
+// 9-stellige Zufallsnummer (100000000..999999999) – läuft auf Node UND Cloudflare Workers
+function rand9(){
+  const c = (typeof globalThis!=="undefined" && globalThis.crypto && globalThis.crypto.getRandomValues)
+    ? globalThis.crypto : crypto.webcrypto;
+  const b = new Uint32Array(1); c.getRandomValues(b);
+  return String(100000000 + (b[0] % 900000000));
+}
+
 /* ---------- Arbeitsspeicher-Variante ---------- */
 function memStore(){
   const directory=new Map(), mailbox=new Map(), subs=new Map(), backups=new Map();
@@ -33,7 +41,7 @@ function memStore(){
     async emailVerifiedElsewhere(email,exceptNumber){ email=(email||"").toLowerCase(); if(!email) return false;
       for(const [num,e] of directory){ if(num!==exceptNumber && e.email===email && e.verified) return true; } return false; },
     async createIdentity(d){
-      let n; do{ n=String(crypto.randomInt(100000000,1000000000)); }while(directory.has(n));
+      let n; do{ n=rand9(); }while(directory.has(n));
       directory.set(n,{signPub:d.signPub,kexPub:d.kexPub,name:d.name||"",avatar:d.avatar||"",status:d.status||""});
       return n;
     },
@@ -118,7 +126,7 @@ function pgStore(Pool, connectionString){
       const r=await q(`SELECT 1 FROM identities WHERE lower(email)=$1 AND verified<>0 AND number<>$2 LIMIT 1`,[(email||"").toLowerCase(),exceptNumber||""]); return r.rows.length>0; },
     async createIdentity(d){
       for(let i=0;i<10000;i++){
-        const n=String(crypto.randomInt(100000000,1000000000));
+        const n=rand9();
         const r=await q(`INSERT INTO identities(number,sign_pub,kex_pub,name,avatar,status,created_at)
           VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (number) DO NOTHING`,
           [n,d.signPub,d.kexPub,d.name||"",d.avatar||"",d.status||"",Date.now()]);
