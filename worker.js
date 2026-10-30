@@ -23,7 +23,16 @@ import crypto from "node:crypto";
 class NeonHttpPool {
   constructor(opts){ this.sql = neon(opts.connectionString, { fullResults: true }); }
   async query(text, params){
-    const res = await this.sql.query(text, params || []);
+    params = params || [];
+    let res;
+    if(typeof this.sql.query === "function"){
+      res = await this.sql.query(text, params);
+    } else {
+      // Tagged-Template-Weg (immer vorhanden): "$1,$2,…" in Template-Teile zerlegen (unsere Queries nutzen sie in Reihenfolge, je einmal)
+      const parts = text.split(/\$\d+/);
+      const strings = parts.slice(); strings.raw = parts.slice();
+      res = await this.sql(strings, ...params);
+    }
     if(Array.isArray(res)) return { rows: res, rowCount: res.length };
     return { rows: res.rows || [], rowCount: (res.rowCount != null ? res.rowCount : (res.rows ? res.rows.length : 0)) };
   }
