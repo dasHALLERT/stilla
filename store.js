@@ -128,9 +128,9 @@ function pgStore(Pool, connectionString){
       for(let i=0;i<10000;i++){
         const n=rand9();
         const r=await q(`INSERT INTO identities(number,sign_pub,kex_pub,name,avatar,status,created_at)
-          VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (number) DO NOTHING`,
+          VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (number) DO NOTHING RETURNING number`,
           [n,d.signPub,d.kexPub,d.name||"",d.avatar||"",d.status||"",Date.now()]);
-        if(r.rowCount===1) return n;
+        if(r.rows && r.rows.length===1) return n;   // RETURNING ist verlässlicher als rowCount (auch über HTTP-Treiber)
       }
       throw new Error("keine freie Nummer gefunden");
     },

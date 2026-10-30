@@ -14,9 +14,20 @@
  * (werden auf Cloudflare separat nachgerüstet). Alles andere ist identisch.
  */
 import nacl from "tweetnacl";
-import { Pool } from "@neondatabase/serverless";
+import { neon } from "@neondatabase/serverless";
 import { createStore } from "./store.js";
 import crypto from "node:crypto";
+
+// Neon über HTTP (richtig für Cloudflare Workers – jede Query ist eine eigene HTTP-Anfrage,
+// kein Hängen durch Dauerverbindungen). Als "Pool" verpackt, damit store.js unverändert bleibt.
+class NeonHttpPool {
+  constructor(opts){ this.sql = neon(opts.connectionString, { fullResults: true }); }
+  async query(text, params){
+    const res = await this.sql.query(text, params || []);
+    if(Array.isArray(res)) return { rows: res, rowCount: res.length };
+    return { rows: res.rows || [], rowCount: (res.rowCount != null ? res.rowCount : (res.rows ? res.rows.length : 0)) };
+  }
+}
 
 // Präsenz + Login-Nonce: flüchtig, im Worker-Speicher (für kleine Tester-Gruppe ausreichend)
 const lastSeen = new Map();
@@ -26,7 +37,7 @@ const ONLINE_MS = 30000;
 let _store = null;
 function getStore(env){
   if(_store) return _store;
-  _store = createStore({ Pool, connectionString: env.DATABASE_URL || "" });
+  _store = createStore({ Pool: NeonHttpPool, connectionString: env.DATABASE_URL || "" });
   return _store;
 }
 let _inited = false;
@@ -99,12 +110,14 @@ async function sendRecoverMail(env,email,numbers){
 /* ---------- Router ---------- */
 async function handleApi(request, env){
   const url = new URL(request.url); const p = url.pathname; const m = request.method;
+
+  // /ping braucht KEINE Datenbank -> immer sofort antworten (Health-Check)
+  if(m==="GET" && p==="/ping") return new Response("ok",{headers:{"Content-Type":"text/plain","Cache-Control":"no-cache"}});
+
   const store = getStore(env);
   await ensureInit(store);
   const SECRET = env.VERIFY_SECRET || "stilla-dev-secret-change-me";
   const appUrl = (env.APP_URL && /^https?:\/\//.test(env.APP_URL)) ? env.APP_URL.replace(/\/+$/,"") : url.origin;
-
-  if(m==="GET" && p==="/ping") return new Response("ok",{headers:{"Content-Type":"text/plain","Cache-Control":"no-cache"}});
 
   if(m==="POST" && p==="/subscribe"){ const b=await readBody(request); if(b.number&&b.subscription) await store.setPushSub(b.number,b.subscription); return json({ok:true}); }
 
@@ -227,7 +240,7 @@ export default {
     const url = new URL(request.url);
     if(isApi(url.pathname)){
       try{ const r = await handleApi(request, env); if(r) return r; }
-      catch(e){ console.log("API-Fehler", url.pathname, e && e.message); return json({error:"server"},500); }
+      catch(e){ console.log("API-Fehler", url.pathname, e && e.message); return json({error:"server", detail:String(e && e.message || e)},500); }
       return json({error:"not found"},404);
     }
     // alles andere: statische Dateien aus public/ (index.html, manifest.json, sw.js, Icons)
