@@ -249,7 +249,7 @@ export default {
     const url = new URL(request.url);
     if(isApi(url.pathname)){
       try{ const r = await handleApi(request, env); if(r) return r; }
-      catch(e){ console.log("API-Fehler", url.pathname, e && e.message); return json({error:"server", detail:String(e && e.message || e)},500); }
+      catch(e){ console.log("API-Fehler", url.pathname, e && e.message); return json({error:"server"},500); }
       return json({error:"not found"},404);
     }
     // alles andere: statische Dateien aus public/ (index.html, manifest.json, sw.js, Icons)

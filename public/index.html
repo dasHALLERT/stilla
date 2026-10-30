@@ -15,7 +15,7 @@
   *{box-sizing:border-box}html,body{height:100%;margin:0}
   /* Seiten-Scroll sperren: nur die inneren Listen scrollen, untere Leiste + Plus bleiben fix */
   html{overflow:hidden}
-  body{background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,"Segoe UI",sans-serif;line-height:1.5;position:fixed;inset:0;overflow:hidden;overscroll-behavior:none}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,system-ui,"Segoe UI",sans-serif;line-height:1.5;position:fixed;inset:0;overflow:hidden;overscroll-behavior:none;padding-top:env(safe-area-inset-top,0px)}
   #app{max-width:520px;margin:0 auto;height:100%;position:relative;display:flex;flex-direction:column}
   #app.hasbanner .view{top:46px}
   .vbanner{position:absolute;top:0;left:0;right:0;height:46px;background:var(--bad);color:#2a0b0b;display:none;align-items:center;justify-content:center;gap:6px;z-index:60;font-size:.8rem;font-weight:700;padding:6px 12px;cursor:pointer;text-align:center;line-height:1.2}
