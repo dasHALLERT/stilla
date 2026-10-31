@@ -812,27 +812,35 @@ function packMsg(text,att){return JSON.stringify({v:1,t:text||"",a:att||null});}
 function unpackMsg(raw){try{const o=JSON.parse(raw);if(o&&o.v===1)return{text:o.t||"",att:o.a||null};}catch{}return{text:raw,att:null};}
 
 /* Bild verkleinern -> data-URL (JPEG), damit die Umschläge klein bleiben */
-function shrinkImage(file){return new Promise((res,rej)=>{
-  const img=new Image();const url=URL.createObjectURL(file);
-  img.onload=()=>{URL.revokeObjectURL(url);
-    const max=1280;let{width:w,height:h}=img;
-    if(w>max||h>max){if(w>=h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
-    const cv=document.createElement("canvas");cv.width=w;cv.height=h;
-    cv.getContext("2d").drawImage(img,0,0,w,h);
-    res(cv.toDataURL("image/jpeg",0.72));};
-  img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("Bild konnte nicht gelesen werden."));};
-  img.src=url;});}
+/* Bild dekodieren – erst createImageBitmap (verträgt mehr Handy-Formate/WebViews),
+   sonst Fallback über <img>+ObjectURL. Gibt etwas Zeichenbares mit width/height zurück. */
+async function decodeImage(file){
+  try{ if(typeof createImageBitmap==="function"){ const b=await createImageBitmap(file); if(b&&b.width) return b; } }catch(_){}
+  return await new Promise((res,rej)=>{
+    const img=new Image();const url=URL.createObjectURL(file);
+    img.onload=()=>{URL.revokeObjectURL(url);res(img);};
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("decode"));};
+    img.src=url;});
+}
+async function shrinkImage(file){
+  const im=await decodeImage(file);
+  const max=1280;let w=im.width,h=im.height;
+  if(w>max||h>max){if(w>=h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
+  const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+  cv.getContext("2d").drawImage(im,0,0,w,h);
+  if(im.close)im.close();
+  return cv.toDataURL("image/jpeg",0.72);
+}
 /* Avatar: quadratisch zuschneiden + klein (256px) */
-function shrinkImageSquare(file){return new Promise((res,rej)=>{
-  const img=new Image();const url=URL.createObjectURL(file);
-  img.onload=()=>{URL.revokeObjectURL(url);
-    const S=256,side=Math.min(img.width,img.height);
-    const sx=(img.width-side)/2,sy=(img.height-side)/2;
-    const cv=document.createElement("canvas");cv.width=S;cv.height=S;
-    cv.getContext("2d").drawImage(img,sx,sy,side,side,0,0,S,S);
-    res(cv.toDataURL("image/jpeg",0.8));};
-  img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("Bild konnte nicht gelesen werden."));};
-  img.src=url;});}
+async function shrinkImageSquare(file){
+  const im=await decodeImage(file);
+  const S=256,side=Math.min(im.width,im.height);
+  const sx=(im.width-side)/2,sy=(im.height-side)/2;
+  const cv=document.createElement("canvas");cv.width=S;cv.height=S;
+  cv.getContext("2d").drawImage(im,sx,sy,side,side,0,0,S,S);
+  if(im.close)im.close();
+  return cv.toDataURL("image/jpeg",0.8);
+}
 /* beliebige Datei -> data-URL */
 function fileToDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(new Error("Datei konnte nicht gelesen werden."));r.readAsDataURL(file);});}
 function fmtSize(b){if(b<1024)return b+" B";if(b<1048576)return(b/1024).toFixed(0)+" KB";return(b/1048576).toFixed(1)+" MB";}
@@ -1854,17 +1862,20 @@ $("#menu").onclick=e=>{if(e.target.id==="menu")closeMenu();};
 /* Reiter P1CZ / CL1PZ + Stories */
 document.querySelectorAll("[data-tabs] button").forEach(b=>b.onclick=()=>go(b.dataset.go));
 $("#fabPic").onclick=()=>$("#picFile").click();
-$("#picFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)openComposer("pic",f);e.target.value="";};
+$("#picFile").onchange=async e=>{const inp=e.target;const f=inp.files&&inp.files[0];if(f)await openComposer("pic",f);inp.value="";};
 $("#fabClip").onclick=()=>$("#clipFile").click();
-$("#clipFile").onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)openComposer("clip",f);e.target.value="";};
+$("#clipFile").onchange=async e=>{const inp=e.target;const f=inp.files&&inp.files[0];if(f)await openComposer("clip",f);inp.value="";};
 $("#compX").onclick=closeComposer;
 $("#composer").onclick=e=>{if(e.target.id==="composer")closeComposer();};
 $("#compShare").onclick=doShare;
 $("#compDesc").addEventListener("input",()=>{$("#compCount").textContent=$("#compDesc").value.length;});
-$("#storyFile").onchange=async e=>{const fs=e.target.files;e.target.value="";
-  if(!fs||!fs.length)return;
-  if(fs.length===1){ try{const d=await shrinkImage(fs[0]);openStoryEditor(d);}catch(err){toast("Bild konnte nicht geladen werden.");} }
-  else addStory(fs);   // mehrere -> Album ohne Editor
+$("#storyFile").onchange=async e=>{const inp=e.target;const fs=inp.files;
+  if(!fs||!fs.length){inp.value="";return;}
+  try{
+    if(fs.length===1){ const d=await shrinkImage(fs[0]);openStoryEditor(d); }
+    else { await addStory(fs); }
+  }catch(err){ console.log("Story-Bild-Fehler:",err&&err.message); toast("Bild konnte nicht geladen werden ("+((err&&err.message)||"?")+")."); }
+  inp.value="";   // ERST nach dem Verarbeiten zurücksetzen (manche Android-WebViews brechen die Datei sonst ab)
 };
 $("#seCancel").onclick=closeStoryEditor;
 $("#seShare").onclick=storyEditShare;
