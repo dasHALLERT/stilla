@@ -115,6 +115,19 @@ async function sendRecoverMail(env,email,numbers){
     <p style="color:#8798a8;font-size:12px">Wenn du das nicht angefordert hast, ignoriere diese E-Mail einfach.</p>`);
   return sendMail(env,email,"stilla – deine Nummer",html,"Deine stilla-Nummer(n): "+numbers.map(fmtNum).join(", "));
 }
+async function sendReportMail(env, rep){
+  const to = env.REPORT_TO || "abuse@getstilla.me";
+  const esc = s => String(s==null?"":s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const html=mailShell(`<p><b>Neue Meldung</b></p>
+    <p style="margin:4px 0">Gemeldete Nummer: <b>${fmtNum(rep.reported)}</b><br>
+    Von: ${rep.reporter?fmtNum(rep.reporter):"—"}<br>
+    Grund: <b>${esc(rep.reason)}</b></p>
+    ${rep.detail?`<p style="margin:4px 0">Beschreibung:<br>${esc(rep.detail)}</p>`:""}
+    ${rep.sample?`<p style="margin:4px 0;color:#8798a8">Gemeldeter Inhalt (Auszug):<br>${esc(rep.sample)}</p>`:""}
+    <p style="color:#8798a8;font-size:12px">Chat-Inhalte sind Ende-zu-Ende-verschlüsselt; nur was der/die Meldende mitschickt, ist sichtbar.</p>`);
+  const text=`Meldung\nGemeldet: ${fmtNum(rep.reported)}\nVon: ${rep.reporter?fmtNum(rep.reporter):"-"}\nGrund: ${rep.reason}\n${rep.detail||""}\n${rep.sample||""}`;
+  return sendMail(env,to,"stilla – Meldung: "+(rep.reason||"Inhalt"),html,text);
+}
 
 /* ---------- Router ---------- */
 async function handleApi(request, env){
@@ -139,6 +152,10 @@ async function handleApi(request, env){
 
   if(m==="POST" && p==="/recover"){ const b=await readBody(request);
     if(validEmail(b.email)){ try{ const nums=await store.numbersForEmail(b.email.trim()); if(nums.length) await sendRecoverMail(env,b.email.trim(),nums); }catch(_){} }
+    return json({ok:true}); }
+
+  if(m==="POST" && p==="/report"){ const b=await readBody(request);
+    if(b && /^\d{9}$/.test(String(b.reported||""))){ try{ await sendReportMail(env,b); }catch(_){} }
     return json({ok:true}); }
 
   if(m==="POST" && p==="/verify/check"){ const b=await readBody(request);
@@ -241,7 +258,7 @@ async function handleApi(request, env){
   return null;   // keine API-Route -> Aufrufer liefert statische Datei
 }
 
-const API_PREFIXES = ["/ping","/subscribe","/verify/","/recover","/email-taken","/reset/","/register","/reclaim","/backup","/account/","/profile","/keys","/presence","/challenge","/login","/send","/fetch"];
+const API_PREFIXES = ["/ping","/subscribe","/verify/","/recover","/report","/email-taken","/reset/","/register","/reclaim","/backup","/account/","/profile","/keys","/presence","/challenge","/login","/send","/fetch"];
 function isApi(pathname){ return API_PREFIXES.some(x => x.endsWith("/") ? pathname.startsWith(x) : pathname===x); }
 
 export default {

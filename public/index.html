@@ -284,6 +284,15 @@
   .modalbtns{display:flex;gap:8px;margin-top:14px}
   .modalbtns button{flex:1}
   button.danger-solid{background:var(--bad);color:#2a0b0b;border:none}
+  .modalcard textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:10px;font:inherit;resize:vertical}
+  .repreasons{display:flex;flex-direction:column;gap:6px}
+  .repreasons .rr{text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:10px 12px;font:inherit;cursor:pointer}
+  .repreasons .rr.sel{border-color:var(--accent);background:rgba(88,213,201,.12)}
+  .repchk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.86rem;color:var(--fg);cursor:pointer}
+  .repchk input{width:auto}
+  .blocklist{display:flex;flex-direction:column;gap:6px}
+  .blockrow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-family:ui-monospace,monospace;font-size:.9rem}
+  .blockrow button{flex:0 0 auto;padding:6px 12px}
   .storyedit{position:absolute;inset:0;z-index:68;background:#000;display:none;flex-direction:column}
   .storyedit.on{display:flex}
   .sehead{display:flex;align-items:center;gap:10px;padding:10px 14px;z-index:3}
@@ -570,6 +579,9 @@
       <label class="switch"><span>Gelesene Nachrichten nach 24 h löschen</span><input type="checkbox" id="optAutodel"><span class="sw"></span></label>
       <p class="sub" style="font-size:.74rem;margin:6px 2px 0">Screenshot-Warnungen kommen mit der nativen App – im Browser technisch nicht möglich.</p>
 
+      <div class="setlbl">BLOCKIERT</div>
+      <div id="blockedList" class="blocklist"></div>
+
       <div class="setlbl">BENACHRICHTIGUNGEN</div>
       <button class="ghost" id="notifBtn">Benachrichtigungen aktivieren</button>
       <p class="sub" id="notifHint" style="font-size:.74rem;margin:6px 2px 0">Für neue Nachrichten & Freundschaftsanfragen – auch wenn stilla geschlossen ist. Auf dem iPhone zuerst „Zum Home-Bildschirm" hinzufügen.</p>
@@ -608,6 +620,22 @@
       <div class="modalbtns">
         <button class="ghost" id="delCancel">Nein, behalten</button>
         <button class="danger-solid" id="delConfirm">Ja, löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Melden -->
+  <div class="modal" id="reportModal">
+    <div class="modalcard">
+      <h3>Melden</h3>
+      <p class="sub" id="reportWho" style="margin:0 0 10px"></p>
+      <div id="reportReasons" class="repreasons"></div>
+      <textarea id="reportDetail" placeholder="Was ist passiert? (optional)" rows="3" style="margin-top:10px"></textarea>
+      <label class="repchk"><input type="checkbox" id="reportBlock" checked> Diese Person auch blockieren</label>
+      <p class="sub" id="reportHint" style="font-size:.78rem;margin:8px 0 0"></p>
+      <div class="modalbtns">
+        <button class="ghost" id="reportCancel">Abbrechen</button>
+        <button class="danger-solid" id="reportSend">Senden</button>
       </div>
     </div>
   </div>
@@ -723,6 +751,9 @@ const reqin=()=>LS.get("stilla_reqin",{});     // Nummer -> {name,kexPub,avatar,
 const saveReqin=r=>LS.set("stilla_reqin",r);
 const reqout=()=>LS.get("stilla_reqout",{});   // Nummer -> {...,ts} (ausstehend)
 const saveReqout=r=>LS.set("stilla_reqout",r);
+const blocked=()=>LS.get("stilla_blocked",[]);         // Array blockierter Nummern
+const saveBlocked=a=>LS.set("stilla_blocked",a);
+const isBlocked=n=>blocked().includes(n);
 
 /* Aktionsmenü + Langdruck */
 let suppressClick=0;
@@ -1036,6 +1067,10 @@ function renderRequests(){
     const acc=document.createElement("button");acc.textContent="Annehmen";acc.onclick=()=>acceptRequest(n);
     const dec=document.createElement("button");dec.className="decline";dec.textContent="Ablehnen";dec.onclick=()=>declineRequest(n);
     btns.appendChild(acc);btns.appendChild(dec);card.appendChild(btns);
+    attachLongPress(card,()=>openMenu(r.name||("Nummer "+fmt(n)),[
+      {label:"Melden",danger:true,fn:()=>openReport(n,r.text||"")},
+      {label:"Blockieren",danger:true,fn:()=>blockUser(n)}
+    ]));
     box.appendChild(card);
   });
 }
@@ -1059,24 +1094,89 @@ function openMsgMenu(num,m){
   const mine=isMine(m);const items=[];
   if(!m.del&&mine)items.push({label:((m.st||1)<3?"Zurückziehen (noch ungelesen)":"Für alle löschen"),danger:true,fn:()=>deleteForAll(num,m.ts)});
   items.push({label:"Für mich löschen",danger:true,fn:()=>deleteForMe(num,m.ts)});
+  if(!mine&&!m.del)items.push({label:"Melden",danger:true,fn:()=>openReport(num,m.text||(m.att&&m.att.kind?("["+m.att.kind+"]"):""))});
   openMenu(m.del?"Gelöschte Nachricht":(mine?"Deine Nachricht":"Nachricht"),items);
 }
 function openChatHeaderMenu(){
   if(!peer)return;
   openMenu(peer.name||("Nummer "+fmt(peer.number)),[
-    {label:"Chat löschen (nur bei dir)",danger:true,fn:()=>{clearChat(peer.number);go("home");}}
+    {label:"Chat löschen (nur bei dir)",danger:true,fn:()=>{clearChat(peer.number);go("home");}},
+    {label:"Melden",danger:true,fn:()=>openReport(peer.number,"")},
+    {label:"Blockieren",danger:true,fn:()=>blockUser(peer.number)}
   ]);
 }
 function openChatMenu(num){
   const p=contacts()[num]||{};const pinned=pins().includes(num);
   openMenu(p.name||("Nummer "+fmt(num)),[
     {label:pinned?"Pin lösen":"Anpinnen",fn:()=>togglePin(num)},
-    {label:"Freund löschen",danger:true,fn:()=>deleteChat(num)}
+    {label:"Freund löschen",danger:true,fn:()=>deleteChat(num)},
+    {label:"Melden",danger:true,fn:()=>openReport(num,"")},
+    {label:"Blockieren",danger:true,fn:()=>blockUser(num)}
   ]);
 }
 function togglePin(num){let a=pins();a=a.includes(num)?a.filter(x=>x!==num):[num,...a];savePins(a);renderContacts();}
 function clearChat(num){try{localStorage.removeItem("stilla_log_"+num);}catch{}const u=unread();delete u[num];saveUnread(u);if(peer&&peer.number===num)renderThread(num);renderContacts();toast("Chat geleert");}
 function deleteChat(num){try{localStorage.removeItem("stilla_log_"+num);}catch{}const c=contacts();delete c[num];saveContacts(c);const u=unread();delete u[num];saveUnread(u);savePins(pins().filter(x=>x!==num));if(peer&&peer.number===num){peer=null;go("home");}renderContacts();toast("Freund entfernt");}
+
+/* ---------- Blockieren & Melden ---------- */
+function blockUser(num){
+  if(!num)return;
+  const b=blocked(); if(!b.includes(num)){b.push(num);saveBlocked(b);}
+  // als Freund entfernen + offene Anfragen von/zu dieser Nummer entsorgen
+  try{localStorage.removeItem("stilla_log_"+num);}catch{}
+  const c=contacts();delete c[num];saveContacts(c);
+  const ri=reqin();delete ri[num];saveReqin(ri);
+  const ro=reqout();delete ro[num];saveReqout(ro);
+  const u=unread();delete u[num];saveUnread(u);
+  savePins(pins().filter(x=>x!==num));
+  if(peer&&peer.number===num){peer=null;go("home");}
+  renderContacts();if(typeof renderRequests==="function")renderRequests();renderBlocked();
+  toast("Blockiert");
+}
+function unblockUser(num){saveBlocked(blocked().filter(x=>x!==num));renderBlocked();toast("Blockierung aufgehoben");}
+
+const REPORT_REASONS=[
+  "Spam oder Werbung",
+  "Belästigung oder Beleidigung",
+  "Gewalt oder Drohung",
+  "Sexueller Inhalt",
+  "Inhalt mit Minderjährigen",
+  "Etwas anderes"
+];
+let reportCtx=null;   // {num, sample}
+function openReport(num,sample){
+  reportCtx={num,sample:sample||""};
+  const p=contacts()[num]||reqin()[num]||{};
+  $("#reportWho").textContent=(p.name?p.name+" · ":"")+"Nummer "+fmt(num);
+  const box=$("#reportReasons");box.innerHTML="";
+  REPORT_REASONS.forEach(r=>{const btn=document.createElement("button");btn.className="rr";btn.textContent=r;btn.onclick=()=>{box.querySelectorAll(".rr").forEach(x=>x.classList.remove("sel"));btn.classList.add("sel");};box.appendChild(btn);});
+  $("#reportDetail").value="";$("#reportBlock").checked=true;$("#reportHint").textContent="";
+  $("#reportModal").classList.add("on");
+}
+function closeReport(){$("#reportModal").classList.remove("on");reportCtx=null;}
+async function sendReport(){
+  if(!reportCtx)return;
+  const sel=$("#reportReasons .rr.sel");
+  if(!sel){$("#reportHint").textContent="Bitte einen Grund wählen.";return;}
+  const hint=$("#reportHint");hint.textContent="Wird gesendet…";
+  const body={reporter:(me&&me.number)||"",reported:reportCtx.num,reason:sel.textContent,detail:$("#reportDetail").value.trim().slice(0,1000),sample:(reportCtx.sample||"").slice(0,500),ts:Date.now()};
+  let ok=false;
+  try{const r=await api("/report","POST",body);ok=!!(r&&r.ok);}catch{ok=false;}
+  const alsoBlock=$("#reportBlock").checked;
+  closeReport();
+  if(alsoBlock)blockUser(body.reported);
+  toast(ok?"Danke – Meldung gesendet":"Meldung gespeichert, Versand folgt");
+}
+function renderBlocked(){
+  const box=$("#blockedList");if(!box)return;
+  const b=blocked();
+  if(!b.length){box.innerHTML='<div class="empty" style="padding:10px 0">Keine blockierten Nummern.</div>';return;}
+  box.innerHTML="";
+  b.forEach(n=>{const row=document.createElement("div");row.className="blockrow";
+    row.innerHTML='<span>Nummer '+fmt(n)+'</span>';
+    const btn=document.createElement("button");btn.className="ghost";btn.textContent="Freigeben";btn.onclick=()=>unblockUser(n);
+    row.appendChild(btn);box.appendChild(row);});
+}
 
 /* löscht lokal gelesene Nachrichten älter als 24 h (falls aktiviert) */
 function autodelSweep(){
@@ -1133,6 +1233,7 @@ async function fetchLoop(){
   const u=unread();let changed=false,openPeerTouched=false,storiesTouched=false,reqTouched=false;const feedTouched={},deliveredTo={},readTo={};
   for(const m of msgs){
     const from=m.from;if(!from)continue;
+    if(isBlocked(from)) continue;   // Blockierte: nichts annehmen (Nachricht, Anfrage, Story, Beitrag)
     // Schlüssel nur holen (nicht als Kontakt speichern) — Entschlüsseln
     let p=await lookupKeys(from);
     let env=m.envelope; if(typeof env==="string"){try{env=JSON.parse(env);}catch{}}
@@ -1669,7 +1770,7 @@ function openSettings(){
   $("#optAutodel").checked=autodelOn();
   $("#optInvis").checked=invisibleOn();
   markTheme(LS.get("stilla_theme","dunkel"));
-  buildAccents();updateNotifBtn();fillVerCard();
+  buildAccents();updateNotifBtn();fillVerCard();renderBlocked();
   show("settings");
 }
 async function saveSettings(){
@@ -1761,6 +1862,8 @@ function closeModal(id){$("#"+id).classList.remove("on");}
 $("#pwChangeBtn").onclick=()=>{$("#pwOld").value="";$("#pwNew").value="";$("#pwNew2").value="";$("#pwModalHint").textContent="";
   $("#pwOld").style.display=me.hasPw?"":"none";openModal("pwModal");};
 $("#pwCancel").onclick=()=>closeModal("pwModal");
+$("#reportCancel").onclick=closeReport;
+$("#reportSend").onclick=sendReport;
 $("#pwConfirm").onclick=async()=>{
   const hint=$("#pwModalHint");const oldPw=$("#pwOld").value,n1=$("#pwNew").value,n2=$("#pwNew2").value;
   if(n1.length<6){hint.textContent="Neues Passwort mindestens 6 Zeichen.";return;}

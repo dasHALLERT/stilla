@@ -125,6 +125,27 @@ async function sendRecoverMail(email,numbers){
   }catch(e){ console.log("Resend-Exception(recover)",e.message); return {ok:false}; }
 }
 
+async function sendReportMail(rep){
+  if(!RESEND_API_KEY) return {ok:false,error:"email-disabled"};
+  const to = process.env.REPORT_TO || "abuse@getstilla.me";
+  const esc = s => String(s==null?"":s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const html=`<div style="font-family:system-ui,sans-serif;background:#10151e;color:#e8eef3;padding:28px;border-radius:14px;max-width:460px;margin:auto">
+    <h2 style="font-family:Georgia,serif;color:#e8eef3">stilla</h2>
+    <p><b>Neue Meldung</b></p>
+    <p>Gemeldete Nummer: <b>${fmtNum(rep.reported)}</b><br>Von: ${rep.reporter?fmtNum(rep.reporter):"—"}<br>Grund: <b>${esc(rep.reason)}</b></p>
+    ${rep.detail?`<p>Beschreibung:<br>${esc(rep.detail)}</p>`:""}
+    ${rep.sample?`<p style="color:#8798a8">Gemeldeter Inhalt (Auszug):<br>${esc(rep.sample)}</p>`:""}
+  </div>`;
+  const text=`Meldung\nGemeldet: ${fmtNum(rep.reported)}\nVon: ${rep.reporter?fmtNum(rep.reporter):"-"}\nGrund: ${rep.reason}\n${rep.detail||""}\n${rep.sample||""}`;
+  try{
+    const r=await fetch("https://api.resend.com/emails",{method:"POST",
+      headers:{"Authorization":"Bearer "+RESEND_API_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({from:MAIL_FROM,to:[to],subject:"stilla – Meldung: "+(rep.reason||"Inhalt"),html,text})});
+    if(r.ok) return {ok:true};
+    const t=await r.text(); console.log("Resend-Fehler(report)",r.status,t); return {ok:false};
+  }catch(e){ console.log("Resend-Exception(report)",e.message); return {ok:false}; }
+}
+
 // Signatur über eine beliebige Textnachricht prüfen (Konto löschen / Nummer ändern)
 function verifyMsg(msg, sigB64, signPubB64){
   try{
@@ -180,6 +201,11 @@ const server = http.createServer(async (req,res)=>{
       try{ const nums=await store.numbersForEmail(b.email.trim());
         if(nums.length) await sendRecoverMail(b.email.trim(),nums); }catch(_){}
     }
+    return send(res,200,{ok:true}); }
+
+  // Meldung: schickt eine E-Mail an die Abuse-Adresse. Antwort immer generisch.
+  if(req.method==="POST" && p==="/report"){ const b=await body(req);
+    if(b && /^\d{9}$/.test(String(b.reported||""))){ try{ await sendReportMail(b); }catch(_){} }
     return send(res,200,{ok:true}); }
 
   // Bestätigungslink prüfen: markiert die Nummer serverseitig als bestätigt (überlebt Gerätewechsel)
