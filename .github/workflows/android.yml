@@ -1,0 +1,56 @@
+name: Android APK bauen
+
+# Baut eine installierbare Test-APK (Debug). Läuft bei Push auf die App
+# und kann jederzeit von Hand gestartet werden (Actions -> "Run workflow").
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'app/**'
+      - '.github/workflows/android.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code holen
+        uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Java (JDK 17) einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Abhängigkeiten installieren
+        working-directory: app
+        run: npm install
+
+      - name: Android-Projekt erzeugen
+        working-directory: app
+        run: npx cap add android
+
+      - name: Icons & Splash erzeugen
+        working-directory: app
+        run: npx @capacitor/assets@3 generate --android || echo "assets-Schritt übersprungen"
+
+      - name: Web-Assets synchronisieren
+        working-directory: app
+        run: npx cap sync android
+
+      - name: APK bauen (Debug)
+        working-directory: app/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: APK hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: stilla-debug-apk
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
