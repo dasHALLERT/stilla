@@ -47,6 +47,10 @@ jobs:
         working-directory: app
         run: npx cap sync android
 
+      - name: System-Leisten einfärben (Status-/Navigationsleiste)
+        working-directory: app
+        run: python3 android-overrides/patch_theme.py
+
       - name: APK bauen (Debug)
         working-directory: app/android
         run: ./gradlew assembleDebug --no-daemon
