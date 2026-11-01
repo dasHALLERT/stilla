@@ -53,6 +53,14 @@ jobs:
         working-directory: app
         run: npx cap sync android
 
+      - name: Versionsnummer hochzählen (für Store-Auto-Updates)
+        working-directory: app
+        run: |
+          VC="${GITHUB_RUN_NUMBER}"
+          sed -i "s/versionCode [0-9]\+/versionCode ${VC}/" android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${VC}\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+
       - name: System-Leisten einfärben (Status-/Navigationsleiste)
         working-directory: app
         run: python3 android-overrides/patch_theme.py
