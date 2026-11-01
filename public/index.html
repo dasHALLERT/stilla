@@ -727,7 +727,17 @@ const $=s=>document.querySelector(s);
 const enc=new TextEncoder(), dec=new TextDecoder();
 const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-const api=(p,m="POST",d)=>fetch(p,{method:m,headers:{"Content-Type":"application/json"},body:d?JSON.stringify(d):undefined}).then(r=>r.json());
+// Server-Adresse: Im Browser (gleiche Herkunft) relativ. In der eingebauten
+// App (Capacitor: capacitor://localhost bzw. https://localhost) absolut auf
+// den Cloudflare-Worker, weil der Code dann aus dem App-Paket kommt.
+const API_BASE=(function(){
+  try{
+    var h=location.hostname, pr=location.protocol;
+    if(pr==="capacitor:"||pr==="file:"||h==="localhost"||h==="127.0.0.1") return "https://stilla.aykaramba.workers.dev";
+  }catch(_){}
+  return "";
+})();
+const api=(p,m="POST",d)=>fetch(API_BASE+p,{method:m,headers:{"Content-Type":"application/json"},body:d?JSON.stringify(d):undefined}).then(r=>r.json());
 const fmt=n=>(""+n).replace(/(\d{3})(\d{3})(\d{3})/,"$1 $2 $3");
 const esc=s=>{const d=document.createElement("div");d.textContent=(s==null?"":s);return d.innerHTML;};
 const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v;}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};

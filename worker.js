@@ -53,7 +53,16 @@ let _inited = false;
 async function ensureInit(store){ if(_inited) return; await store.init(); _inited = true; }
 
 /* ---------- Helfer ---------- */
-const JSONH = { "Content-Type": "application/json" };
+// CORS: Die eingebaute Android-/iOS-App läuft auf einer anderen Herkunft
+// (https://localhost bzw. capacitor://localhost) und spricht den Worker
+// von dort an. Keine Cookies/Credentials im Spiel -> "*" ist sicher.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Max-Age": "86400"
+};
+const JSONH = { "Content-Type": "application/json", ...CORS };
 const json = (obj, status=200) => new Response(JSON.stringify(obj), { status, headers: JSONH });
 async function readBody(request){ try{ return await request.json(); }catch{ return {}; } }
 
@@ -133,8 +142,11 @@ async function sendReportMail(env, rep){
 async function handleApi(request, env){
   const url = new URL(request.url); const p = url.pathname; const m = request.method;
 
+  // CORS-Preflight (OPTIONS) sofort beantworten – für die eingebaute App
+  if(m==="OPTIONS") return new Response(null,{status:204,headers:CORS});
+
   // /ping braucht KEINE Datenbank -> immer sofort antworten (Health-Check)
-  if(m==="GET" && p==="/ping") return new Response("ok",{headers:{"Content-Type":"text/plain","Cache-Control":"no-cache"}});
+  if(m==="GET" && p==="/ping") return new Response("ok",{headers:{"Content-Type":"text/plain","Cache-Control":"no-cache",...CORS}});
 
   const store = getStore(env);
   await ensureInit(store);

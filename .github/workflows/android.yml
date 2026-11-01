@@ -35,6 +35,12 @@ jobs:
         working-directory: app
         run: npm install
 
+      - name: App-Code einbetten (public -> www)
+        run: |
+          cp public/index.html public/manifest.json public/sw.js app/www/
+          cp public/*.png app/www/
+          echo "eingebettet:"; ls -la app/www
+
       - name: Android-Projekt erzeugen
         working-directory: app
         run: npx cap add android

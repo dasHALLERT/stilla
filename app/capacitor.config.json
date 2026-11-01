@@ -3,8 +3,6 @@
   "appName": "stilla",
   "webDir": "www",
   "server": {
-    "url": "https://stilla.aykaramba.workers.dev",
-    "cleartext": false,
     "androidScheme": "https"
   },
   "android": {
