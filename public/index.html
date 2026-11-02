@@ -241,6 +241,7 @@
   .bub video.bubvid{max-width:100%;border-radius:11px;display:block;background:#000}
   /* Freundschaftsanfragen */
   .requests{flex:none;display:flex;flex-direction:column;gap:8px;padding:8px 0 2px}
+  .requests:empty{padding:0}   /* ohne Anfragen kein Versatz -> „leer"-Text auf gleicher Höhe wie P1CZ/CL1PZ */
   .reqlbl{font-size:.72rem;color:var(--muted);letter-spacing:.04em;margin:2px 2px 0}
   .reqcard{background:var(--s2);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:9px}
   .reqtop{display:flex;align-items:center;gap:10px}
@@ -466,6 +467,7 @@
       <span class="t">stilla</span><span class="tag">P1CZ</span>
       <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
         <div class="av hav" id="picAv" role="button" title="Einstellungen">?</div>
+        <button class="ic" id="settingsBtnPic" aria-label="Einstellungen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 00-1.7-1l-.3-2.5H9.4l-.3 2.5a7 7 0 00-1.7 1l-2.3-1-2 3.4 2 1.5a7 7 0 000 2l-2 1.5 2 3.4 2.3-1a7 7 0 001.7 1l.3 2.5h4.2l.3-2.5a7 7 0 001.7-1l2.3 1 2-3.4-2-1.5a7 7 0 00.1-1z"/></svg></button>
       </div>
     </div>
     <div class="stories" id="stPic"></div>
@@ -486,6 +488,7 @@
       <span class="t">stilla</span><span class="tag">CL1PZ</span>
       <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
         <div class="av hav" id="clipAv" role="button" title="Einstellungen">?</div>
+        <button class="ic" id="settingsBtnClip" aria-label="Einstellungen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 00-1.7-1l-.3-2.5H9.4l-.3 2.5a7 7 0 00-1.7 1l-2.3-1-2 3.4 2 1.5a7 7 0 000 2l-2 1.5 2 3.4 2.3-1a7 7 0 001.7 1l.3 2.5h4.2l.3-2.5a7 7 0 001.7-1l2.3 1 2-3.4-2-1.5a7 7 0 00.1-1z"/></svg></button>
       </div>
     </div>
     <div class="stories" id="stClip"></div>
@@ -2017,6 +2020,7 @@ $("#svNext").onclick=storyNext;
 $("#svPrev").onclick=storyPrev;
 $("#svLike").onclick=storyLike;
 $("#picAv").onclick=openSettings;$("#clipAv").onclick=openSettings;
+$("#settingsBtnPic").onclick=openSettings;$("#settingsBtnClip").onclick=openSettings;
 
 /* ---------- PWA / Push-Benachrichtigungen ---------- */
 const VAPID_PUBLIC="BBp8lGotK5Uoo2qFmxuTSSiAPq9PfaEKgS67ZjijzkIx0K8d6YgyM-z1kTMAXnv6PAXFBd3zFzTKJp-uj4m6m94";
