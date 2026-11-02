@@ -1543,6 +1543,7 @@ function openStoryEditor(dataUrl){
   $("#seEmojiRow").classList.remove("on");$("#seText").classList.remove("on");$("#seText").value="";
   setActive(null);
   buildSeEmoji();buildSeFilters(dataUrl);$("#storyedit").classList.add("on");
+  ensureSeResize();
 }
 function closeStoryEditor(){setActive(null);$("#storyedit").classList.remove("on");}
 function buildSeEmoji(){const row=$("#seEmojiRow");if(row.dataset.built)return;row.dataset.built="1";
@@ -1571,6 +1572,15 @@ function setActive(el){
   if(el){el.classList.add("active");
     const sz=$("#seSize");if(sz){sz.classList.add("on");$("#seSizeRange").value=el.dataset.scale||"1";}
   }else{const sz=$("#seSize");if(sz)sz.classList.remove("on");}
+}
+function reflowOverlays(){$("#seCanvas").querySelectorAll(".seov").forEach(applyOv);}
+let seResizeObs=null;
+function ensureSeResize(){
+  if(seResizeObs||typeof ResizeObserver==="undefined")return;
+  // Wenn sich die Vorschau ändert (z. B. Tastatur geht auf/zu), Schriftgrößen neu berechnen,
+  // damit Editor und fertiges Bild 1:1 übereinstimmen.
+  seResizeObs=new ResizeObserver(()=>reflowOverlays());
+  try{seResizeObs.observe($("#seCanvas"));}catch(_){}
 }
 function cycleColor(el){let ci=(parseInt(el.dataset.ci||"0")+1)%SE_COLORS.length;el.dataset.ci=ci;el.style.color=SE_COLORS[ci];}
 function makeDraggable(el){
@@ -1632,11 +1642,18 @@ function makeDraggable(el){
 /* Bricht Text an Wortgrenzen um, sobald eine Zeile breiter als maxW wird */
 function wrapLines(ctx,text,maxW){
   const words=String(text).split(/\s+/);const lines=[];let cur="";
-  words.forEach(wd=>{
+  const pushWord=(wd)=>{
+    // überlanges Einzelwort zeichenweise umbrechen (wie word-break im Editor)
+    while(ctx.measureText(wd).width>maxW&&wd.length>1){
+      let i=1;while(i<wd.length&&ctx.measureText(wd.slice(0,i+1)).width<=maxW)i++;
+      if(cur){lines.push(cur);cur="";}
+      lines.push(wd.slice(0,i));wd=wd.slice(i);
+    }
     const test=cur?cur+" "+wd:wd;
     if(ctx.measureText(test).width>maxW&&cur){lines.push(cur);cur=wd;}
     else cur=test;
-  });
+  };
+  words.forEach(pushWord);
   if(cur)lines.push(cur);
   return lines.length?lines:[""];
 }
@@ -1655,7 +1672,7 @@ function compositeStory(){
     const isText=el.dataset.type==="text";
     const f=SE_FONTS[parseInt(el.dataset.font||"0")%SE_FONTS.length];
     ctx.font=(isText?(f.weight+" "):"")+fs+"px "+(isText?f.family:"-apple-system,system-ui,'Segoe UI',sans-serif");
-    const lines=isText?wrapLines(ctx,el.textContent,w*0.82):[el.textContent];
+    const lines=isText?wrapLines(ctx,el.textContent,w*0.80):[el.textContent];
     const lh=fs*1.15, total=lh*lines.length;
     ctx.save();ctx.translate(x,y);ctx.rotate(rot);
     if(isText){ctx.shadowColor="rgba(0,0,0,.5)";ctx.shadowBlur=fs*0.22;ctx.shadowOffsetY=fs*0.06;ctx.fillStyle=el.style.color||"#fff";}
