@@ -312,8 +312,12 @@
   .sefilters .fch.sel .thm{border-color:var(--accent)}
   .sefilters .fch .lbl{display:block;margin-top:4px;font-size:.62rem;color:rgba(255,255,255,.72);font-family:ui-monospace,monospace;letter-spacing:.03em}
   .sefilters .fch.sel .lbl{color:var(--accent)}
-  .seov{position:absolute;transform:translate(-50%,-50%);cursor:grab;user-select:none;-webkit-user-select:none;white-space:nowrap;touch-action:none;line-height:1.1}
-  .seov.text{font-weight:800;text-shadow:0 2px 8px rgba(0,0,0,.55);padding:2px 6px}
+  .seov{position:absolute;transform:translate(-50%,-50%);cursor:grab;user-select:none;-webkit-user-select:none;white-space:nowrap;touch-action:none;line-height:1.15}
+  .seov.text{text-shadow:0 2px 8px rgba(0,0,0,.55);padding:2px 6px;white-space:pre-wrap;word-break:break-word;max-width:82%;text-align:center}
+  .seov.active{outline:1.5px dashed rgba(255,255,255,.55);outline-offset:3px;border-radius:4px}
+  .sesize{position:absolute;left:10px;top:50%;transform:translateY(-50%);height:46%;width:30px;z-index:6;display:none;align-items:center;justify-content:center}
+  .sesize.on{display:flex}
+  .sesize input{writing-mode:vertical-lr;direction:rtl;-webkit-appearance:slider-vertical;width:26px;height:100%;accent-color:var(--accent)}
   .sehint{position:absolute;left:0;right:0;bottom:8px;text-align:center;color:rgba(255,255,255,.6);font-size:.74rem;pointer-events:none}
   .setrash{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:54px;height:54px;border-radius:50%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:6;pointer-events:none;transition:transform .12s,background .12s}
   .setrash.on{display:flex}
@@ -674,7 +678,7 @@
   <div class="sharesheet" id="sharesheet">
     <div class="sscard">
       <div class="sshead"><span>Teilen</span><button class="x" id="ssX">✕</button></div>
-      <button class="ssstory" id="ssStory"><span class="ssplus">＋</span> Zu meiner Story</button>
+      <button class="ssstory" id="ssStory"><span class="ssplus">＋</span> Zu meiner ST0RY</button>
       <div class="sslbl">An Freunde senden</div>
       <div class="sslist" id="ssList"></div>
       <button id="ssSend" disabled>Senden</button>
@@ -696,10 +700,11 @@
       <div class="setools">
         <button id="seAddText" aria-label="Text">Aa</button>
         <button id="seAddEmoji" aria-label="Emoji">😊</button>
+        <button id="seFont" aria-label="Schriftart">Schrift</button>
       </div>
-      <button class="seshare" id="seShare">Zur Story</button>
+      <button class="seshare" id="seShare">Zur ST0RY</button>
     </div>
-    <div class="sestage" id="seStage"><div class="secanvas" id="seCanvas"><img id="seImg" alt=""></div><div class="setrash" id="seTrash" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div></div>
+    <div class="sestage" id="seStage"><div class="secanvas" id="seCanvas"><img id="seImg" alt=""></div><div class="setrash" id="seTrash" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div><div class="sesize" id="seSize" aria-hidden="true"><input type="range" id="seSizeRange" min="0.4" max="3" step="0.05" value="1" aria-label="Größe"></div></div>
     <div class="sefilters" id="seFilters"></div>
     <div class="seemoji" id="seEmojiRow"></div>
     <input id="seText" class="setext" placeholder="Text eingeben…" maxlength="60" autocomplete="off">
@@ -1258,7 +1263,7 @@ async function fetchLoop(){
     if(att&&att.kind==="friendreq"){ if(!contacts()[from]){const ri=reqin();ri[from]={name:att.name||"",kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||"",text:att.text||"",ts:att.ts||m.ts||Date.now()};saveReqin(ri);reqTouched=true;} continue; }
     if(att&&att.kind==="friendacc"){ const c=contacts();c[from]={name:att.name||("Nummer "+fmt(from)),kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||""};saveContacts(c);const ro=reqout();delete ro[from];saveReqout(ro);changed=true; continue; }
     if(att&&att.kind==="frienddecline"){ const ro=reqout();delete ro[from];saveReqout(ro);changed=true; continue; }
-    if(att&&att.kind==="storylike"){ if(contacts()[from]){const lg2=logOf(from);lg2.push({from,mine:false,text:"❤️ hat auf deine Story reagiert",att:null,ts:att.ts||m.ts||Date.now()});saveLog(from,lg2);changed=true;if(peer&&peer.number===from)openPeerTouched=true;else u[from]=(u[from]||0)+1;} continue; }
+    if(att&&att.kind==="storylike"){ if(contacts()[from]){const lg2=logOf(from);lg2.push({from,mine:false,text:"❤️ hat auf deine ST0RY reagiert",att:null,ts:att.ts||m.ts||Date.now()});saveLog(from,lg2);changed=true;if(peer&&peer.number===from)openPeerTouched=true;else u[from]=(u[from]||0)+1;} continue; }
 
     if(att&&att.kind==="ack"){ const lg2=logOf(from);let ch=false;
       lg2.forEach(x=>{if(isMine(x)&&x.ts<=att.ref){if(att.t==="delivered"&&(x.st||1)<2){x.st=2;ch=true;}if(att.t==="read"&&(x.st||1)<3){x.st=3;x.readAt=Date.now();ch=true;}}});
@@ -1437,7 +1442,7 @@ function openShare(medium,post){
 function closeShare(){$("#sharesheet").classList.remove("on");shareCur=null;}
 function updateShareBtn(){const n=Object.keys(shareSel).length;const b=$("#ssSend");
   b.disabled=(!n&&!shareStoryFlag);
-  b.textContent=n?("An "+n+(n===1?" Kontakt":" Kontakte")+" senden"+(shareStoryFlag?" + Story":"")):(shareStoryFlag?"Zur Story":"Senden");}
+  b.textContent=n?("An "+n+(n===1?" Kontakt":" Kontakte")+" senden"+(shareStoryFlag?" + ST0RY":"")):(shareStoryFlag?"Zur ST0RY":"Senden");}
 async function doShareSend(){
   if(!shareCur)return;const {medium,post}=shareCur;
   const att=(medium==="pic")?{kind:"img",name:post.title||"Bild",mime:post.mime,data:post.data}:{kind:"video",name:post.title||"Clip",mime:post.mime,data:post.data};
@@ -1474,7 +1479,7 @@ function showStorySeg(){
   const s=svSegs[svIdx];
   // Fortschrittsbalken
   const bars=$("#svBars");bars.innerHTML="";svSegs.forEach((x,i)=>{const b=document.createElement("div");b.className="sb"+(i<=svIdx?" done":"");bars.appendChild(b);});
-  setAv($("#svAv"),s);$("#svName").textContent=(s.owner===me.number?"Deine Story":(s.name||("Nummer "+fmt(s.owner))));$("#svTime").textContent=timeAgo(s.ts);
+  setAv($("#svAv"),s);$("#svName").textContent=(s.owner===me.number?"Deine ST0RY":(s.name||("Nummer "+fmt(s.owner))));$("#svTime").textContent=timeAgo(s.ts);
   $("#svTitle").textContent=s.title||"";
   const stage=$("#svStage");
   // altes Medium entfernen (nur img/video, Overlays behalten)
@@ -1500,6 +1505,13 @@ async function storyLike(){
 /* ---------- Story-Editor (Text/Emoji aufs Bild) ---------- */
 const SE_EMOJI=["😀","😂","😍","🥰","😎","😮","😢","😡","👍","🔥","❤️","✨","🎉","💯","🙌","👏","🤝","🌙","⭐","🌈","☀️","💧","🎵","📍","💬","🤫","🕊️","🫶","😴","🥳"];
 const SE_COLORS=["#ffffff","#000000","#58d5c9","#ffd84d","#ff5a7a","#5aa9ff"];
+const SE_FONTS=[
+  {family:"-apple-system,system-ui,'Segoe UI',Roboto,Arial,sans-serif",weight:"800"},
+  {family:"Georgia,'Times New Roman',serif",weight:"700"},
+  {family:"ui-monospace,'Courier New',Consolas,monospace",weight:"700"}
+];
+let seActive=null;   // zuletzt angefasstes Overlay (für Größen-Regler & Schrift-Wechsel)
+let seFontIdx=0;     // aktuell gewählte Schriftart (für neuen Text)
 // Filter: CSS-filter-Strings – funktionieren live (img.style.filter) UND beim Export (ctx.filter)
 const SE_FILTERS=[
   {name:"Original", css:"none"},
@@ -1529,34 +1541,104 @@ function openStoryEditor(dataUrl){
   img.onload=()=>{$("#seCanvas").style.aspectRatio=img.naturalWidth+"/"+img.naturalHeight;};
   img.src=dataUrl; seFilter="none"; img.style.filter="none";
   $("#seEmojiRow").classList.remove("on");$("#seText").classList.remove("on");$("#seText").value="";
+  setActive(null);
   buildSeEmoji();buildSeFilters(dataUrl);$("#storyedit").classList.add("on");
 }
-function closeStoryEditor(){$("#storyedit").classList.remove("on");}
+function closeStoryEditor(){setActive(null);$("#storyedit").classList.remove("on");}
 function buildSeEmoji(){const row=$("#seEmojiRow");if(row.dataset.built)return;row.dataset.built="1";
   SE_EMOJI.forEach(e=>{const b=document.createElement("button");b.type="button";b.textContent=e;b.onclick=()=>{addOverlay("emoji",e);row.classList.remove("on");};row.appendChild(b);});}
 function addOverlay(type,txt){
   const el=document.createElement("div");el.className="seov "+type;el.textContent=txt;
   el.dataset.type=type;el.dataset.x="0.5";el.dataset.y="0.5";
   el.dataset.frac=(type==="emoji"?"0.13":"0.07");el.dataset.ci="0";
-  el.style.left="50%";el.style.top="50%";
+  el.dataset.scale="1";el.dataset.rot="0";el.dataset.font=(type==="text"?String(seFontIdx):"0");
   if(type==="text"){el.style.color=SE_COLORS[0];}
-  const h=$("#seCanvas").clientHeight||360;el.style.fontSize=(parseFloat(el.dataset.frac)*h)+"px";
-  makeDraggable(el);$("#seCanvas").appendChild(el);
+  makeDraggable(el);$("#seCanvas").appendChild(el);applyOv(el);setActive(el);
+}
+/* Zeichnet ein Overlay neu (Position, Größe, Drehung, Schrift, Farbe) */
+function applyOv(el){
+  const h=$("#seCanvas").clientHeight||360;
+  const scale=parseFloat(el.dataset.scale||"1"),rot=parseFloat(el.dataset.rot||"0");
+  el.style.left=(parseFloat(el.dataset.x)*100)+"%";
+  el.style.top=(parseFloat(el.dataset.y)*100)+"%";
+  el.style.fontSize=(parseFloat(el.dataset.frac||"0.07")*scale*h)+"px";
+  el.style.transform="translate(-50%,-50%) rotate("+rot+"deg)";
+  if(el.dataset.type==="text"){const f=SE_FONTS[parseInt(el.dataset.font||"0")%SE_FONTS.length];el.style.fontFamily=f.family;el.style.fontWeight=f.weight;}
+}
+function setActive(el){
+  if(seActive&&seActive!==el)seActive.classList.remove("active");
+  seActive=el;
+  if(el){el.classList.add("active");
+    const sz=$("#seSize");if(sz){sz.classList.add("on");$("#seSizeRange").value=el.dataset.scale||"1";}
+  }else{const sz=$("#seSize");if(sz)sz.classList.remove("on");}
 }
 function cycleColor(el){let ci=(parseInt(el.dataset.ci||"0")+1)%SE_COLORS.length;el.dataset.ci=ci;el.style.color=SE_COLORS[ci];}
 function makeDraggable(el){
-  let on=false,moved=false,sx,sy,ox,oy;
+  const pts=new Map();                       // aktive Finger auf DIESEM Overlay
+  let moved=false,multiUsed=false;
+  let sx,sy,ox,oy;                            // 1-Finger: Start-Zeiger + Start-Position
+  let g=null;                                 // 2-Finger-Geste: {dist,ang,mx,my,scale,rot,x,y}
   const rect=()=>$("#seCanvas").getBoundingClientRect();
   const trash=()=>$("#seTrash");
   const overTrash=(x,y)=>{const t=trash();if(!t)return false;const r=t.getBoundingClientRect();return x>=r.left-16&&x<=r.right+16&&y>=r.top-16&&y<=r.bottom+16;};
-  el.addEventListener("pointerdown",e=>{e.preventDefault();on=true;moved=false;try{el.setPointerCapture(e.pointerId);}catch{}sx=e.clientX;sy=e.clientY;ox=parseFloat(el.dataset.x);oy=parseFloat(el.dataset.y);el.style.cursor="grabbing";const t=trash();if(t)t.classList.add("on");});
-  el.addEventListener("pointermove",e=>{if(!on)return;const r=rect();const nx=Math.min(1,Math.max(0,ox+(e.clientX-sx)/r.width)),ny=Math.min(1,Math.max(0,oy+(e.clientY-sy)/r.height));if(Math.abs(e.clientX-sx)>3||Math.abs(e.clientY-sy)>3)moved=true;el.dataset.x=nx;el.dataset.y=ny;el.style.left=(nx*100)+"%";el.style.top=(ny*100)+"%";const hot=overTrash(e.clientX,e.clientY);const t=trash();if(t)t.classList.toggle("hot",hot);el.style.opacity=hot?"0.4":"1";});
-  const end=(e)=>{if(!on)return;on=false;el.style.cursor="grab";el.style.opacity="1";const t=trash();if(t)t.classList.remove("on","hot");
-    if(e&&overTrash(e.clientX,e.clientY)){el.remove();return;}   // auf den Mülleimer gezogen -> löschen
-    if(!moved&&el.dataset.type==="text")cycleColor(el);};
-  el.addEventListener("pointerup",end);el.addEventListener("pointercancel",()=>end());
-  // Doppeltipp entfernt auch
-  let lastTap=0;el.addEventListener("pointerdown",()=>{const t=Date.now();if(t-lastTap<300)el.remove();lastTap=t;});
+  const two=()=>{const a=[...pts.values()];return {dist:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),ang:Math.atan2(a[1].y-a[0].y,a[1].x-a[0].x)*180/Math.PI,mx:(a[0].x+a[1].x)/2,my:(a[0].y+a[1].y)/2};};
+  const startGesture=()=>{const t=two();g={dist:t.dist,ang:t.ang,mx:t.mx,my:t.my,scale:parseFloat(el.dataset.scale||"1"),rot:parseFloat(el.dataset.rot||"0"),x:parseFloat(el.dataset.x),y:parseFloat(el.dataset.y)};};
+  const start1=(e)=>{sx=e.clientX;sy=e.clientY;ox=parseFloat(el.dataset.x);oy=parseFloat(el.dataset.y);};
+  el.addEventListener("pointerdown",e=>{
+    e.preventDefault();e.stopPropagation();
+    try{el.setPointerCapture(e.pointerId);}catch{}
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    setActive(el);
+    // Doppeltipp (1 Finger) löscht
+    const now=Date.now();if(pts.size===1){if(now-(el._lastTap||0)<300){el.remove();if(seActive===el)setActive(null);return;}el._lastTap=now;}
+    if(pts.size===1){moved=false;start1(e);el.style.cursor="grabbing";const t=trash();if(t)t.classList.add("on");}
+    else if(pts.size===2){multiUsed=true;startGesture();const t=trash();if(t)t.classList.remove("on","hot");}
+  });
+  el.addEventListener("pointermove",e=>{
+    if(!pts.has(e.pointerId))return;
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    const r=rect();
+    if(pts.size>=2&&g){
+      const t=two();
+      let scale=g.scale*(t.dist/(g.dist||1));scale=Math.min(6,Math.max(0.2,scale));
+      const rot=g.rot+(t.ang-g.ang);
+      const nx=Math.min(1,Math.max(0,g.x+(t.mx-g.mx)/r.width));
+      const ny=Math.min(1,Math.max(0,g.y+(t.my-g.my)/r.height));
+      el.dataset.scale=scale;el.dataset.rot=rot;el.dataset.x=nx;el.dataset.y=ny;applyOv(el);
+      const sr=$("#seSizeRange");if(sr)sr.value=Math.min(3,Math.max(0.4,scale));
+      return;
+    }
+    // 1 Finger: verschieben (+ Mülleimer)
+    const nx=Math.min(1,Math.max(0,ox+(e.clientX-sx)/r.width)),ny=Math.min(1,Math.max(0,oy+(e.clientY-sy)/r.height));
+    if(Math.abs(e.clientX-sx)>3||Math.abs(e.clientY-sy)>3)moved=true;
+    el.dataset.x=nx;el.dataset.y=ny;applyOv(el);
+    if(!multiUsed){const hot=overTrash(e.clientX,e.clientY);const t=trash();if(t)t.classList.toggle("hot",hot);el.style.opacity=hot?"0.4":"1";}
+  });
+  const up=(e)=>{
+    if(!pts.has(e.pointerId))return;
+    const wasOverTrash=(pts.size===1&&!multiUsed&&e&&overTrash(e.clientX,e.clientY));
+    pts.delete(e.pointerId);
+    if(pts.size===1){start1({clientX:[...pts.values()][0].x,clientY:[...pts.values()][0].y});g=null;}   // 2->1: Drag sauber fortsetzen
+    if(pts.size===0){
+      el.style.cursor="grab";el.style.opacity="1";const t=trash();if(t)t.classList.remove("on","hot");
+      if(wasOverTrash){el.remove();if(seActive===el)setActive(null);return;}
+      if(!moved&&!multiUsed&&el.dataset.type==="text")cycleColor(el);
+      multiUsed=false;
+    }
+  };
+  el.addEventListener("pointerup",up);
+  el.addEventListener("pointercancel",up);
+}
+/* Bricht Text an Wortgrenzen um, sobald eine Zeile breiter als maxW wird */
+function wrapLines(ctx,text,maxW){
+  const words=String(text).split(/\s+/);const lines=[];let cur="";
+  words.forEach(wd=>{
+    const test=cur?cur+" "+wd:wd;
+    if(ctx.measureText(test).width>maxW&&cur){lines.push(cur);cur=wd;}
+    else cur=test;
+  });
+  if(cur)lines.push(cur);
+  return lines.length?lines:[""];
 }
 function compositeStory(){
   const img=$("#seImg");const w=img.naturalWidth||1080,h=img.naturalHeight||1080;
@@ -1567,10 +1649,18 @@ function compositeStory(){
   try{ ctx.filter="none"; }catch(_){}
   ctx.textAlign="center";ctx.textBaseline="middle";
   $("#seCanvas").querySelectorAll(".seov").forEach(el=>{
-    const x=parseFloat(el.dataset.x)*w,y=parseFloat(el.dataset.y)*h,fs=parseFloat(el.dataset.frac||"0.07")*h;
-    ctx.font="800 "+fs+"px -apple-system,system-ui,'Segoe UI',sans-serif";
-    if(el.dataset.type==="text"){ctx.save();ctx.shadowColor="rgba(0,0,0,.5)";ctx.shadowBlur=fs*0.22;ctx.shadowOffsetY=fs*0.06;ctx.fillStyle=el.style.color||"#fff";ctx.fillText(el.textContent,x,y);ctx.restore();}
-    else{ctx.fillText(el.textContent,x,y);}
+    const x=parseFloat(el.dataset.x)*w,y=parseFloat(el.dataset.y)*h;
+    const scale=parseFloat(el.dataset.scale||"1"),rot=parseFloat(el.dataset.rot||"0")*Math.PI/180;
+    const fs=parseFloat(el.dataset.frac||"0.07")*scale*h;
+    const isText=el.dataset.type==="text";
+    const f=SE_FONTS[parseInt(el.dataset.font||"0")%SE_FONTS.length];
+    ctx.font=(isText?(f.weight+" "):"")+fs+"px "+(isText?f.family:"-apple-system,system-ui,'Segoe UI',sans-serif");
+    const lines=isText?wrapLines(ctx,el.textContent,w*0.82):[el.textContent];
+    const lh=fs*1.15, total=lh*lines.length;
+    ctx.save();ctx.translate(x,y);ctx.rotate(rot);
+    if(isText){ctx.shadowColor="rgba(0,0,0,.5)";ctx.shadowBlur=fs*0.22;ctx.shadowOffsetY=fs*0.06;ctx.fillStyle=el.style.color||"#fff";}
+    lines.forEach((ln,i)=>{ctx.fillText(ln,0,(i*lh)-(total/2)+(lh/2));});
+    ctx.restore();
   });
   return cv.toDataURL("image/jpeg",0.82);
 }
@@ -1614,7 +1704,7 @@ function renderStories(){
     const add=document.createElement("div");add.className="story mine"+(haveMine?"":" nostory");
     const ring=document.createElement("div");ring.className="ring";const av=document.createElement("div");av.className="av";setAv(av,me);ring.appendChild(av);
     const plus=document.createElement("div");plus.className="plus";plus.textContent="+";ring.appendChild(plus);
-    add.appendChild(ring);const lbl=document.createElement("div");lbl.className="lbl";lbl.textContent="Deine Story";add.appendChild(lbl);
+    add.appendChild(ring);const lbl=document.createElement("div");lbl.className="lbl";lbl.textContent="Deine ST0RY";add.appendChild(lbl);
     add.onclick=()=>{$("#storyFile").click();};
     strip.appendChild(add);
     Object.keys(groups).filter(o=>o!==me.number).forEach(o=>{
@@ -2005,6 +2095,14 @@ $("#seCancel").onclick=closeStoryEditor;
 $("#seShare").onclick=storyEditShare;
 $("#seAddEmoji").onclick=()=>$("#seEmojiRow").classList.toggle("on");
 $("#seAddText").onclick=()=>{const i=$("#seText");i.value="";i.classList.add("on");i.focus();};
+// Schriftart durchwechseln: aktiver Text sofort, sonst Standard für neuen Text
+$("#seFont").onclick=()=>{seFontIdx=(seFontIdx+1)%SE_FONTS.length;
+  if(seActive&&seActive.dataset.type==="text"){seActive.dataset.font=String(seFontIdx);applyOv(seActive);}
+  else toast("Schriftart "+(seFontIdx+1)+"/"+SE_FONTS.length);};
+// Größen-Regler für das aktive Overlay
+$("#seSizeRange").addEventListener("input",e=>{if(!seActive)return;seActive.dataset.scale=e.target.value;applyOv(seActive);});
+// Tipp auf den freien Hintergrund hebt die Auswahl auf (Regler weg)
+$("#seCanvas").addEventListener("pointerdown",e=>{if(e.target&&e.target.id==="seCanvas"||e.target&&e.target.id==="seImg")setActive(null);});
 $("#seText").addEventListener("keydown",e=>{if(e.key==="Enter"){const v=$("#seText").value.trim();$("#seText").value="";$("#seText").classList.remove("on");$("#seText").blur();if(v)addOverlay("text",v);}});
 $("#seText").addEventListener("blur",()=>{const v=$("#seText").value.trim();$("#seText").value="";$("#seText").classList.remove("on");if(v)addOverlay("text",v);});
 
