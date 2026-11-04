@@ -327,8 +327,39 @@
   .seemoji::-webkit-scrollbar{display:none}
   .seemoji.on{display:flex}
   .seemoji button{background:none;border:none;font-size:1.7rem;cursor:pointer;width:auto;padding:4px;flex:none}
-  .setext{position:absolute;left:12px;right:12px;bottom:16px;z-index:5;display:none}
-  .setext.on{display:block}
+  .seov.text:empty::before{content:attr(data-ph);color:rgba(255,255,255,.65)}
+  .seov.text[contenteditable="true"]{outline:none;cursor:text;min-width:24px}
+  .seov.mention{color:#58d5c9;font-weight:800;text-shadow:0 2px 8px rgba(0,0,0,.55)}
+  #seDraw{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none;touch-action:none}
+  #seDraw.on{pointer-events:auto}
+  /* Werkzeug-Leiste rechts */
+  .setoolsv{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:7;display:flex;flex-direction:column;gap:12px;align-items:flex-end}
+  .setoolsv button{display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:0;width:auto}
+  .setoolsv .tl{color:#fff;font-size:.8rem;font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+  .setoolsv .ic{width:38px;height:38px;border-radius:50%;background:rgba(40,46,56,.82);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;flex:none}
+  .setoolsv button.on .ic{background:var(--accent);color:var(--on)}
+  .setoolsv button.soon .ic{opacity:.5}
+  /* Bearbeitungs-Leiste oben (Text) */
+  .seeditbar{margin-left:auto;display:none;align-items:center;gap:8px}
+  .seeditbar.on{display:flex}
+  .sefontchips{display:flex;gap:6px}
+  .sefontchips button{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.16);border:1.5px solid transparent;color:#fff;font-size:.95rem;cursor:pointer;padding:0}
+  .sefontchips button.sel{border-color:#fff;background:rgba(255,255,255,.28)}
+  .secolor{width:30px;height:30px;border-radius:50%;border:2px solid #fff;cursor:pointer;background:#fff;padding:0}
+  .sedone{background:var(--accent);color:var(--on);border:none;border-radius:999px;padding:8px 15px;font-weight:700;cursor:pointer;width:auto}
+  /* Zeichnen-Leiste */
+  .sedrawbar{position:absolute;left:0;right:0;bottom:10px;z-index:8;display:none;align-items:center;justify-content:center;gap:10px;padding:0 12px}
+  .sedrawbar.on{display:flex}
+  .sedrawcolors{display:flex;gap:7px}
+  .sedrawcolors button{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.7);cursor:pointer;padding:0}
+  .sedrawcolors button.sel{border-color:#fff;transform:scale(1.18)}
+  .sedrawundo{background:rgba(40,46,56,.82);color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:1.2rem;cursor:pointer}
+  .sedrawdone{background:var(--accent);color:var(--on);border:none;border-radius:999px;padding:8px 15px;font-weight:700;cursor:pointer;width:auto}
+  /* Speichern-Aktionen */
+  .seactions{display:flex;gap:10px;padding:8px 12px;background:#111;z-index:3}
+  .seactions button{flex:1;background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:600;cursor:pointer}
+  .kibadge{position:absolute;left:10px;bottom:10px;z-index:5;background:rgba(0,0,0,.55);color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.06em;padding:4px 8px;border-radius:7px;pointer-events:none;display:none}
+  .kibadge.on{display:block}
   /* Profilseite */
   .profile{position:absolute;inset:0;z-index:58;background:var(--bg);display:none;flex-direction:column}
   .profile.on{display:flex}
@@ -697,17 +728,45 @@
   <div class="storyedit" id="storyedit">
     <div class="sehead">
       <button class="x" id="seCancel" aria-label="Abbrechen">✕</button>
-      <div class="setools">
-        <button id="seAddText" aria-label="Text">Aa</button>
-        <button id="seAddEmoji" aria-label="Emoji">😊</button>
-        <button id="seFont" aria-label="Schriftart">Schrift</button>
+      <!-- Bearbeitungs-Leiste: nur sichtbar, während man Text eingibt -->
+      <div class="seeditbar" id="seEditBar" aria-hidden="true">
+        <div class="sefontchips" id="seFontChips"></div>
+        <button class="secolor" id="seColorBtn" aria-label="Farbe"></button>
+        <button class="sedone" id="seDone">Fertig</button>
       </div>
       <button class="seshare" id="seShare">Zur ST0RY</button>
     </div>
-    <div class="sestage" id="seStage"><div class="secanvas" id="seCanvas"><img id="seImg" alt=""></div><div class="setrash" id="seTrash" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div><div class="sesize" id="seSize" aria-hidden="true"><input type="range" id="seSizeRange" min="0.4" max="3" step="0.05" value="1" aria-label="Größe"></div></div>
+    <div class="sestage" id="seStage">
+      <div class="secanvas" id="seCanvas">
+        <img id="seImg" alt="">
+        <canvas id="seDraw" aria-hidden="true"></canvas>
+        <div class="kibadge" id="seKiBadge">KI-generiert</div>
+      </div>
+      <!-- Werkzeug-Leiste rechts (wie Instagram) -->
+      <div class="setoolsv" id="seToolsV">
+        <button data-tool="text"><span class="tl">Text</span><span class="ic">Aa</span></button>
+        <button data-tool="sticker"><span class="tl">Sticker</span><span class="ic">😊</span></button>
+        <button data-tool="music" class="soon"><span class="tl">Musik</span><span class="ic">♪</span></button>
+        <button data-tool="effekt"><span class="tl">Effekte</span><span class="ic">✨</span></button>
+        <button data-tool="mention"><span class="tl">Erwähnen</span><span class="ic">@</span></button>
+        <button data-tool="draw"><span class="tl">Zeichnen</span><span class="ic">✎</span></button>
+        <button data-tool="ai" id="seAiBtn"><span class="tl">KI-Label</span><span class="ic">KI</span></button>
+      </div>
+      <div class="setrash" id="seTrash" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></div>
+      <div class="sesize" id="seSize" aria-hidden="true"><input type="range" id="seSizeRange" min="0.4" max="3" step="0.05" value="1" aria-label="Größe"></div>
+      <!-- Zeichnen-Leiste (nur im Zeichnen-Modus) -->
+      <div class="sedrawbar" id="seDrawBar" aria-hidden="true">
+        <div class="sedrawcolors" id="seDrawColors"></div>
+        <button class="sedrawundo" id="seDrawUndo" aria-label="Rückgängig">↶</button>
+        <button class="sedrawdone" id="seDrawDone">Fertig</button>
+      </div>
+    </div>
     <div class="sefilters" id="seFilters"></div>
+    <div class="seactions">
+      <button id="seSaveDev">⬇ Speichern</button>
+      <button id="seSavePic">＋ In P1CZ</button>
+    </div>
     <div class="seemoji" id="seEmojiRow"></div>
-    <input id="seText" class="setext" placeholder="Text eingeben…" maxlength="60" autocomplete="off">
   </div>
 
   <!-- PROFIL -->
@@ -1536,27 +1595,35 @@ function buildSeFilters(dataUrl){
     b.appendChild(im);b.appendChild(l);b.onclick=()=>applySeFilter(f.css);row.appendChild(b);
   });
 }
+let seEditing=null, seAiLabel=false;
 function openStoryEditor(dataUrl){
   const img=$("#seImg");$("#seCanvas").querySelectorAll(".seov").forEach(e=>e.remove());
-  img.onload=()=>{$("#seCanvas").style.aspectRatio=img.naturalWidth+"/"+img.naturalHeight;};
+  img.onload=()=>{$("#seCanvas").style.aspectRatio=img.naturalWidth+"/"+img.naturalHeight;sizeDrawCanvas();};
   img.src=dataUrl; seFilter="none"; img.style.filter="none";
-  $("#seEmojiRow").classList.remove("on");$("#seText").classList.remove("on");$("#seText").value="";
-  setActive(null);
-  buildSeEmoji();buildSeFilters(dataUrl);$("#storyedit").classList.add("on");
-  ensureSeResize();
+  $("#seEmojiRow").classList.remove("on");
+  setActive(null);endEdit();drawModeOff();seDrawStrokes=[];sizeDrawCanvas();
+  seAiLabel=false;$("#seKiBadge").classList.remove("on");$("#seAiBtn").classList.remove("on");
+  buildSeEmoji();buildSeFilters(dataUrl);buildFontChips();buildDrawColors();
+  $("#storyedit").classList.add("on");ensureSeResize();
 }
-function closeStoryEditor(){setActive(null);$("#storyedit").classList.remove("on");}
+function closeStoryEditor(){setActive(null);endEdit();drawModeOff();$("#storyedit").classList.remove("on");}
 function buildSeEmoji(){const row=$("#seEmojiRow");if(row.dataset.built)return;row.dataset.built="1";
   SE_EMOJI.forEach(e=>{const b=document.createElement("button");b.type="button";b.textContent=e;b.onclick=()=>{addOverlay("emoji",e);row.classList.remove("on");};row.appendChild(b);});}
+
+/* ---- Overlays anlegen ---- */
 function addOverlay(type,txt){
-  const el=document.createElement("div");el.className="seov "+type;el.textContent=txt;
+  const el=document.createElement("div");el.className="seov "+type;
+  if(type==="text")el.dataset.ph="Tippen zum Schreiben"; el.textContent=txt||"";
   el.dataset.type=type;el.dataset.x="0.5";el.dataset.y="0.5";
   el.dataset.frac=(type==="emoji"?"0.13":"0.07");el.dataset.ci="0";
   el.dataset.scale="1";el.dataset.rot="0";el.dataset.font=(type==="text"?String(seFontIdx):"0");
-  if(type==="text"){el.style.color=SE_COLORS[0];}
-  makeDraggable(el);$("#seCanvas").appendChild(el);applyOv(el);setActive(el);
+  if(type==="text"||type==="mention"){el.style.color=(type==="mention"?"#58d5c9":SE_COLORS[0]);}
+  $("#seCanvas").appendChild(el);applyOv(el);setActive(el);
+  return el;
 }
-/* Zeichnet ein Overlay neu (Position, Größe, Drehung, Schrift, Farbe) */
+function addTextOverlay(){ const el=addOverlay("text",""); startEdit(el); }
+function addMentionOverlay(name){ const el=addOverlay("mention","@"+name); }
+
 function applyOv(el){
   const h=$("#seCanvas").clientHeight||360;
   const scale=parseFloat(el.dataset.scale||"1"),rot=parseFloat(el.dataset.rot||"0");
@@ -1577,67 +1644,189 @@ function reflowOverlays(){$("#seCanvas").querySelectorAll(".seov").forEach(apply
 let seResizeObs=null;
 function ensureSeResize(){
   if(seResizeObs||typeof ResizeObserver==="undefined")return;
-  // Wenn sich die Vorschau ändert (z. B. Tastatur geht auf/zu), Schriftgrößen neu berechnen,
-  // damit Editor und fertiges Bild 1:1 übereinstimmen.
-  seResizeObs=new ResizeObserver(()=>reflowOverlays());
+  seResizeObs=new ResizeObserver(()=>{reflowOverlays();sizeDrawCanvas();});
   try{seResizeObs.observe($("#seCanvas"));}catch(_){}
 }
-function cycleColor(el){let ci=(parseInt(el.dataset.ci||"0")+1)%SE_COLORS.length;el.dataset.ci=ci;el.style.color=SE_COLORS[ci];}
-function makeDraggable(el){
-  const pts=new Map();                       // aktive Finger auf DIESEM Overlay
+function cycleColor(el){let ci=(parseInt(el.dataset.ci||"0")+1)%SE_COLORS.length;el.dataset.ci=ci;el.style.color=SE_COLORS[ci];
+  if(el===seEditing){const c=$("#seColorBtn");if(c)c.style.background=SE_COLORS[ci];}}
+
+/* ---- Text direkt im Bild bearbeiten ---- */
+function buildFontChips(){const box=$("#seFontChips");if(box.dataset.built)return;box.dataset.built="1";
+  SE_FONTS.forEach((f,i)=>{const b=document.createElement("button");b.type="button";b.textContent="Aa";b.style.fontFamily=f.family;b.style.fontWeight=f.weight;
+    b.onclick=()=>{seFontIdx=i;markFontChips();if(seEditing){seEditing.dataset.font=String(i);applyOv(seEditing);}};box.appendChild(b);});markFontChips();}
+function markFontChips(){document.querySelectorAll("#seFontChips button").forEach((b,i)=>b.classList.toggle("sel",i===seFontIdx));}
+function startEdit(el){
+  if(!el||el.dataset.type!=="text")return;
+  seEditing=el;el.contentEditable="true";el.classList.add("active");seActive=el;
+  seFontIdx=parseInt(el.dataset.font||"0")||0;markFontChips();
+  const c=$("#seColorBtn");if(c)c.style.background=el.style.color||"#fff";
+  $("#seEditBar").classList.add("on");$("#seEditBar").setAttribute("aria-hidden","false");
+  $("#seSize").classList.add("on");$("#seSizeRange").value=el.dataset.scale||"1";
+  setTimeout(()=>{el.focus();try{const r=document.createRange();r.selectNodeContents(el);r.collapse(false);const s=getSelection();s.removeAllRanges();s.addRange(r);}catch(_){}} ,20);
+}
+function endEdit(){
+  const el=seEditing;seEditing=null;
+  $("#seEditBar").classList.remove("on");$("#seEditBar").setAttribute("aria-hidden","true");
+  if(el){el.contentEditable="false";
+    if(!el.innerText.trim()){el.remove();if(seActive===el)setActive(null);$("#seSize").classList.remove("on");}
+  }
+}
+
+/* ---- Gesten auf Canvas-Ebene (dreht/zoomt auch kleine Texte zuverlässig) ---- */
+function setupSeGestures(){
+  const canvas=$("#seCanvas");
+  const pts=new Map();            // alle Finger auf dem Canvas
+  let target=null;                // Overlay, das manipuliert wird
   let moved=false,multiUsed=false;
-  let sx,sy,ox,oy;                            // 1-Finger: Start-Zeiger + Start-Position
-  let g=null;                                 // 2-Finger-Geste: {dist,ang,mx,my,scale,rot,x,y}
-  const rect=()=>$("#seCanvas").getBoundingClientRect();
-  const trash=()=>$("#seTrash");
-  const overTrash=(x,y)=>{const t=trash();if(!t)return false;const r=t.getBoundingClientRect();return x>=r.left-16&&x<=r.right+16&&y>=r.top-16&&y<=r.bottom+16;};
+  let sx,sy,ox,oy;                // 1-Finger
+  let g=null;                     // 2-Finger-Geste
+  const rect=()=>canvas.getBoundingClientRect();
+  const trash=$("#seTrash");
+  const overTrash=(x,y)=>{if(!trash)return false;const r=trash.getBoundingClientRect();return x>=r.left-18&&x<=r.right+18&&y>=r.top-18&&y<=r.bottom+18;};
   const two=()=>{const a=[...pts.values()];return {dist:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),ang:Math.atan2(a[1].y-a[0].y,a[1].x-a[0].x)*180/Math.PI,mx:(a[0].x+a[1].x)/2,my:(a[0].y+a[1].y)/2};};
-  const startGesture=()=>{const t=two();g={dist:t.dist,ang:t.ang,mx:t.mx,my:t.my,scale:parseFloat(el.dataset.scale||"1"),rot:parseFloat(el.dataset.rot||"0"),x:parseFloat(el.dataset.x),y:parseFloat(el.dataset.y)};};
-  const start1=(e)=>{sx=e.clientX;sy=e.clientY;ox=parseFloat(el.dataset.x);oy=parseFloat(el.dataset.y);};
-  el.addEventListener("pointerdown",e=>{
-    e.preventDefault();e.stopPropagation();
-    try{el.setPointerCapture(e.pointerId);}catch{}
+  const startG=()=>{const t=two();g={dist:t.dist,ang:t.ang,mx:t.mx,my:t.my,scale:parseFloat(target.dataset.scale||"1"),rot:parseFloat(target.dataset.rot||"0"),x:parseFloat(target.dataset.x),y:parseFloat(target.dataset.y)};};
+  const start1=(x,y)=>{sx=x;sy=y;ox=parseFloat(target.dataset.x);oy=parseFloat(target.dataset.y);};
+  let startedOnOv=false, emptyDown=false;
+  canvas.addEventListener("pointerdown",e=>{
+    if(seDrawOn)return;                               // im Zeichnen-Modus macht das die Zeichnen-Logik
+    const ov=e.target.closest&&e.target.closest(".seov");
+    if(seEditing&&ov===seEditing)return;              // Text wird gerade getippt -> normal bearbeiten
+    if(seEditing&&ov!==seEditing){endEdit();}          // woanders getippt -> Eingabe beenden
     pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    setActive(el);
-    // Doppeltipp (1 Finger) löscht
-    const now=Date.now();if(pts.size===1){if(now-(el._lastTap||0)<300){el.remove();if(seActive===el)setActive(null);return;}el._lastTap=now;}
-    if(pts.size===1){moved=false;start1(e);el.style.cursor="grabbing";const t=trash();if(t)t.classList.add("on");}
-    else if(pts.size===2){multiUsed=true;startGesture();const t=trash();if(t)t.classList.remove("on","hot");}
+    e.preventDefault();
+    if(pts.size===1){
+      emptyDown=!ov; startedOnOv=!!ov; moved=false; multiUsed=false;
+      if(ov){ setActive(ov); target=ov;
+        const now=Date.now();
+        if(now-(target._lastTap||0)<300){const t=target;t.remove();if(seActive===t)setActive(null);pts.clear();target=null;return;}
+        target._lastTap=now; start1(e.clientX,e.clientY); if(trash)trash.classList.add("on");
+      } else { target=null; }                          // leerer Hintergrund: erstmal nichts greifen
+    } else if(pts.size===2 && seActive){               // zweiter Finger -> drehen/zoomen des aktiven Overlays (egal wo)
+      multiUsed=true; target=seActive; startG(); if(trash)trash.classList.remove("on","hot");
+    }
   });
-  el.addEventListener("pointermove",e=>{
-    if(!pts.has(e.pointerId))return;
+  canvas.addEventListener("pointermove",e=>{
+    if(!pts.has(e.pointerId)||!target)return;
     pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
     const r=rect();
     if(pts.size>=2&&g){
       const t=two();
       let scale=g.scale*(t.dist/(g.dist||1));scale=Math.min(6,Math.max(0.2,scale));
-      const rot=g.rot+(t.ang-g.ang);
-      const nx=Math.min(1,Math.max(0,g.x+(t.mx-g.mx)/r.width));
-      const ny=Math.min(1,Math.max(0,g.y+(t.my-g.my)/r.height));
-      el.dataset.scale=scale;el.dataset.rot=rot;el.dataset.x=nx;el.dataset.y=ny;applyOv(el);
-      const sr=$("#seSizeRange");if(sr)sr.value=Math.min(3,Math.max(0.4,scale));
+      target.dataset.scale=scale;target.dataset.rot=g.rot+(t.ang-g.ang);
+      target.dataset.x=Math.min(1,Math.max(0,g.x+(t.mx-g.mx)/r.width));
+      target.dataset.y=Math.min(1,Math.max(0,g.y+(t.my-g.my)/r.height));
+      applyOv(target);const sr=$("#seSizeRange");if(sr)sr.value=Math.min(3,Math.max(0.4,scale));
       return;
     }
-    // 1 Finger: verschieben (+ Mülleimer)
     const nx=Math.min(1,Math.max(0,ox+(e.clientX-sx)/r.width)),ny=Math.min(1,Math.max(0,oy+(e.clientY-sy)/r.height));
     if(Math.abs(e.clientX-sx)>3||Math.abs(e.clientY-sy)>3)moved=true;
-    el.dataset.x=nx;el.dataset.y=ny;applyOv(el);
-    if(!multiUsed){const hot=overTrash(e.clientX,e.clientY);const t=trash();if(t)t.classList.toggle("hot",hot);el.style.opacity=hot?"0.4":"1";}
+    target.dataset.x=nx;target.dataset.y=ny;applyOv(target);
+    if(!multiUsed){const hot=overTrash(e.clientX,e.clientY);if(trash)trash.classList.toggle("hot",hot);target.style.opacity=hot?"0.4":"1";}
   });
   const up=(e)=>{
     if(!pts.has(e.pointerId))return;
-    const wasOverTrash=(pts.size===1&&!multiUsed&&e&&overTrash(e.clientX,e.clientY));
+    const wasTrash=(target&&startedOnOv&&pts.size===1&&!multiUsed&&overTrash(e.clientX,e.clientY));
     pts.delete(e.pointerId);
-    if(pts.size===1){start1({clientX:[...pts.values()][0].x,clientY:[...pts.values()][0].y});g=null;}   // 2->1: Drag sauber fortsetzen
+    if(pts.size===1&&target){const p=[...pts.values()][0];start1(p.x,p.y);g=null;}
     if(pts.size===0){
-      el.style.cursor="grab";el.style.opacity="1";const t=trash();if(t)t.classList.remove("on","hot");
-      if(wasOverTrash){el.remove();if(seActive===el)setActive(null);return;}
-      if(!moved&&!multiUsed&&el.dataset.type==="text")cycleColor(el);
-      multiUsed=false;
+      if(trash)trash.classList.remove("on","hot");
+      if(target)target.style.opacity="1";
+      if(wasTrash){const t=target;t.remove();if(seActive===t)setActive(null);target=null;emptyDown=false;startedOnOv=false;return;}
+      if(target&&startedOnOv&&!moved&&!multiUsed){ if(target.dataset.type==="text")startEdit(target); else if(target.dataset.type==="mention")cycleColor(target); }
+      else if(emptyDown&&!moved&&!multiUsed){ setActive(null); }   // Tipp ins Leere -> Auswahl aufheben
+      target=null;emptyDown=false;startedOnOv=false;
     }
   };
-  el.addEventListener("pointerup",up);
-  el.addEventListener("pointercancel",up);
+  canvas.addEventListener("pointerup",up);canvas.addEventListener("pointercancel",up);
+}
+
+/* ---- Zeichnen auf dem Bild ---- */
+let seDrawOn=false, seDrawStrokes=[], seDrawColor="#ffffff";
+function sizeDrawCanvas(){const cv=$("#seDraw"),host=$("#seCanvas");if(!cv||!host)return;
+  const w=host.clientWidth||300,h=host.clientHeight||300;cv.width=w;cv.height=h;redrawStrokes();}
+function redrawStrokes(){const cv=$("#seDraw");if(!cv)return;const ctx=cv.getContext("2d");ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.lineCap="round";ctx.lineJoin="round";
+  seDrawStrokes.forEach(s=>{ctx.strokeStyle=s.color;ctx.lineWidth=s.w*cv.width;ctx.beginPath();
+    s.pts.forEach((p,i)=>{const x=p.x*cv.width,y=p.y*cv.height;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();});}
+function buildDrawColors(){const box=$("#seDrawColors");if(box.dataset.built)return;box.dataset.built="1";
+  ["#ffffff","#000000","#58d5c9","#ffd84d","#ff5a7a","#5aa9ff","#4ad07d"].forEach((c,i)=>{const b=document.createElement("button");b.type="button";b.style.background=c;if(i===0)b.classList.add("sel");
+    b.onclick=()=>{seDrawColor=c;document.querySelectorAll("#seDrawColors button").forEach(x=>x.classList.remove("sel"));b.classList.add("sel");};box.appendChild(b);});}
+function drawModeOn(){seDrawOn=true;setActive(null);$("#seDraw").classList.add("on");$("#seDrawBar").classList.add("on");$("#seToolsV").style.display="none";
+  const cv=$("#seDraw");let cur=null;
+  cv.onpointerdown=e=>{e.preventDefault();try{cv.setPointerCapture(e.pointerId);}catch(_){}cur={color:seDrawColor,w:0.012,pts:[rel(e)]};seDrawStrokes.push(cur);redrawStrokes();};
+  cv.onpointermove=e=>{if(!cur)return;cur.pts.push(rel(e));redrawStrokes();};
+  cv.onpointerup=cv.onpointercancel=()=>{cur=null;};
+  function rel(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height};}
+}
+function drawModeOff(){seDrawOn=false;const cv=$("#seDraw");if(cv){cv.classList.remove("on");cv.onpointerdown=cv.onpointermove=cv.onpointerup=cv.onpointercancel=null;}
+  $("#seDrawBar").classList.remove("on");$("#seToolsV").style.display="";}
+
+/* ---- Text umbrechen (Wort + überlanges Wort) ---- */
+function wrapLines(ctx,text,maxW){
+  const out=[];
+  String(text).split("\n").forEach(para=>{
+    const words=para.split(/\s+/).filter(Boolean);let cur="";
+    const push=(wd)=>{
+      while(ctx.measureText(wd).width>maxW&&wd.length>1){let i=1;while(i<wd.length&&ctx.measureText(wd.slice(0,i+1)).width<=maxW)i++;if(cur){out.push(cur);cur="";}out.push(wd.slice(0,i));wd=wd.slice(i);}
+      const test=cur?cur+" "+wd:wd;if(ctx.measureText(test).width>maxW&&cur){out.push(cur);cur=wd;}else cur=test;
+    };
+    words.forEach(push);out.push(cur);
+  });
+  return out.length?out:[""];
+}
+function compositeStory(){
+  const img=$("#seImg");const w=img.naturalWidth||1080,h=img.naturalHeight||1080;
+  const cv=document.createElement("canvas");cv.width=w;cv.height=h;const ctx=cv.getContext("2d");
+  try{ ctx.filter=(seFilter&&seFilter!=="none")?seFilter:"none"; }catch(_){}
+  ctx.drawImage(img,0,0,w,h);
+  try{ ctx.filter="none"; }catch(_){}
+  // Zeichnungen
+  ctx.lineCap="round";ctx.lineJoin="round";
+  seDrawStrokes.forEach(s=>{ctx.strokeStyle=s.color;ctx.lineWidth=s.w*w;ctx.beginPath();s.pts.forEach((p,i)=>{const x=p.x*w,y=p.y*h;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();});
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  $("#seCanvas").querySelectorAll(".seov").forEach(el=>{
+    const x=parseFloat(el.dataset.x)*w,y=parseFloat(el.dataset.y)*h;
+    const scale=parseFloat(el.dataset.scale||"1"),rot=parseFloat(el.dataset.rot||"0")*Math.PI/180;
+    const fs=parseFloat(el.dataset.frac||"0.07")*scale*h;
+    const kind=el.dataset.type, isText=(kind==="text"||kind==="mention");
+    const f=SE_FONTS[parseInt(el.dataset.font||"0")%SE_FONTS.length];
+    ctx.font=(isText?((kind==="mention"?"800 ":f.weight+" ")):"")+fs+"px "+(isText?(kind==="mention"?"-apple-system,system-ui,sans-serif":f.family):"-apple-system,system-ui,'Segoe UI',sans-serif");
+    const content=isText?(el.innerText||el.textContent):el.textContent;
+    const lines=isText?wrapLines(ctx,content,w*0.80):[content];
+    const lh=fs*1.18, total=lh*lines.length;
+    ctx.save();ctx.translate(x,y);ctx.rotate(rot);
+    if(isText){ctx.shadowColor="rgba(0,0,0,.5)";ctx.shadowBlur=fs*0.22;ctx.shadowOffsetY=fs*0.06;ctx.fillStyle=el.style.color||"#fff";}
+    lines.forEach((ln,i)=>{ctx.fillText(ln,0,(i*lh)-(total/2)+(lh/2));});
+    ctx.restore();
+  });
+  // KI-Kennzeichen
+  if(seAiLabel){const fs=Math.max(18,h*0.028);ctx.save();ctx.font="700 "+fs+"px -apple-system,system-ui,sans-serif";ctx.textAlign="left";ctx.textBaseline="bottom";
+    const txt="KI-generiert",pad=fs*0.5,tw=ctx.measureText(txt).width;ctx.fillStyle="rgba(0,0,0,.55)";
+    ctx.fillRect(h*0.02, h-h*0.02-fs-pad, tw+pad*2, fs+pad);ctx.fillStyle="#fff";ctx.fillText(txt,h*0.02+pad, h-h*0.02-pad*0.3);ctx.restore();}
+  return cv.toDataURL("image/jpeg",0.82);
+}
+async function storyEditShare(){
+  endEdit();drawModeOff();
+  try{const data=compositeStory();closeStoryEditor();const n=await shareStoryData(data,"image/jpeg");
+    toast(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte.");
+  }catch(e){toast((e&&e.message)||"Konnte Story nicht erstellen.");}
+}
+function storySaveToDevice(){
+  endEdit();drawModeOff();
+  try{const data=compositeStory();const a=document.createElement("a");a.href=data;a.download="stilla-story.jpg";document.body.appendChild(a);a.click();a.remove();toast("Bild gespeichert");}
+  catch(e){toast((e&&e.message)||"Konnte Bild nicht speichern.");}
+}
+async function storySaveToPics(){
+  endEdit();drawModeOff();
+  try{const data=compositeStory();
+    const id="p"+Date.now()+Math.random().toString(36).slice(2,7);
+    const post={id,owner:me.number,name:me.name,avatar:me.avatar||"",medium:"pic",mime:"image/jpeg",data,title:"",text:"",ts:Date.now(),likes:{}};
+    addPostLocal("pic",post);
+    closeStoryEditor();go("pic");renderFeed("pic");
+    // an Freunde verteilen wie ein normaler Beitrag
+    for(const num in contacts()){const r=await lookupKeys(num);if(r&&r.kexPub)sendCtrl(num,r.kexPub,Object.assign({kind:"post"},post));}
+    toast("In P1CZ gespeichert");
+  }catch(e){toast((e&&e.message)||"Konnte nicht in P1CZ speichern.");}
 }
 /* Bricht Text an Wortgrenzen um, sobald eine Zeile breiter als maxW wird */
 function wrapLines(ctx,text,maxW){
@@ -2110,18 +2299,32 @@ $("#storyFile").onchange=async e=>{const inp=e.target;const fs=inp.files;
 };
 $("#seCancel").onclick=closeStoryEditor;
 $("#seShare").onclick=storyEditShare;
-$("#seAddEmoji").onclick=()=>$("#seEmojiRow").classList.toggle("on");
-$("#seAddText").onclick=()=>{const i=$("#seText");i.value="";i.classList.add("on");i.focus();};
-// Schriftart durchwechseln: aktiver Text sofort, sonst Standard für neuen Text
-$("#seFont").onclick=()=>{seFontIdx=(seFontIdx+1)%SE_FONTS.length;
-  if(seActive&&seActive.dataset.type==="text"){seActive.dataset.font=String(seFontIdx);applyOv(seActive);}
-  else toast("Schriftart "+(seFontIdx+1)+"/"+SE_FONTS.length);};
-// Größen-Regler für das aktive Overlay
-$("#seSizeRange").addEventListener("input",e=>{if(!seActive)return;seActive.dataset.scale=e.target.value;applyOv(seActive);});
-// Tipp auf den freien Hintergrund hebt die Auswahl auf (Regler weg)
-$("#seCanvas").addEventListener("pointerdown",e=>{if(e.target&&e.target.id==="seCanvas"||e.target&&e.target.id==="seImg")setActive(null);});
-$("#seText").addEventListener("keydown",e=>{if(e.key==="Enter"){const v=$("#seText").value.trim();$("#seText").value="";$("#seText").classList.remove("on");$("#seText").blur();if(v)addOverlay("text",v);}});
-$("#seText").addEventListener("blur",()=>{const v=$("#seText").value.trim();$("#seText").value="";$("#seText").classList.remove("on");if(v)addOverlay("text",v);});
+$("#seDone").onclick=endEdit;
+$("#seColorBtn").onclick=()=>{if(seEditing)cycleColor(seEditing);};
+$("#seSaveDev").onclick=storySaveToDevice;
+$("#seSavePic").onclick=storySaveToPics;
+$("#seDrawDone").onclick=drawModeOff;
+$("#seDrawUndo").onclick=()=>{seDrawStrokes.pop();redrawStrokes();};
+// Größen-Regler für das aktive/bearbeitete Overlay
+$("#seSizeRange").addEventListener("input",e=>{const el=seEditing||seActive;if(!el)return;el.dataset.scale=e.target.value;applyOv(el);});
+// Werkzeug-Leiste rechts
+$("#seToolsV").querySelectorAll("button").forEach(btn=>{btn.onclick=()=>{
+  const tool=btn.dataset.tool;
+  if(tool==="text")addTextOverlay();
+  else if(tool==="sticker")$("#seEmojiRow").classList.toggle("on");
+  else if(tool==="music")toast("Musik kommt mit dem nächsten Update ✨");
+  else if(tool==="effekt"){const f=$("#seFilters");f.scrollIntoView({block:"nearest"});toast("Filter unten wählen");}
+  else if(tool==="mention")openMentionPick();
+  else if(tool==="draw")drawModeOn();
+  else if(tool==="ai"){seAiLabel=!seAiLabel;$("#seKiBadge").classList.toggle("on",seAiLabel);btn.classList.toggle("on",seAiLabel);}
+};});
+// Erwähnen: Kontakt auswählen
+function openMentionPick(){
+  const nums=Object.keys(contacts());
+  if(!nums.length){toast("Noch keine Freunde zum Erwähnen.");return;}
+  openMenu("Wen erwähnen?",nums.map(n=>({label:(contacts()[n].name||("Nummer "+fmt(n))),fn:()=>addMentionOverlay(contacts()[n].name||fmt(n))})));
+}
+setupSeGestures();
 
 /* Profil */
 $("#prBack").onclick=closeProfile;
