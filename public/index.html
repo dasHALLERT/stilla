@@ -1828,53 +1828,6 @@ async function storySaveToPics(){
     toast("In P1CZ gespeichert");
   }catch(e){toast((e&&e.message)||"Konnte nicht in P1CZ speichern.");}
 }
-/* Bricht Text an Wortgrenzen um, sobald eine Zeile breiter als maxW wird */
-function wrapLines(ctx,text,maxW){
-  const words=String(text).split(/\s+/);const lines=[];let cur="";
-  const pushWord=(wd)=>{
-    // überlanges Einzelwort zeichenweise umbrechen (wie word-break im Editor)
-    while(ctx.measureText(wd).width>maxW&&wd.length>1){
-      let i=1;while(i<wd.length&&ctx.measureText(wd.slice(0,i+1)).width<=maxW)i++;
-      if(cur){lines.push(cur);cur="";}
-      lines.push(wd.slice(0,i));wd=wd.slice(i);
-    }
-    const test=cur?cur+" "+wd:wd;
-    if(ctx.measureText(test).width>maxW&&cur){lines.push(cur);cur=wd;}
-    else cur=test;
-  };
-  words.forEach(pushWord);
-  if(cur)lines.push(cur);
-  return lines.length?lines:[""];
-}
-function compositeStory(){
-  const img=$("#seImg");const w=img.naturalWidth||1080,h=img.naturalHeight||1080;
-  const cv=document.createElement("canvas");cv.width=w;cv.height=h;const ctx=cv.getContext("2d");
-  // Filter nur aufs Foto anwenden (nicht auf Text/Emoji); ctx.filter wird danach zurückgesetzt
-  try{ ctx.filter=(seFilter&&seFilter!=="none")?seFilter:"none"; }catch(_){}
-  ctx.drawImage(img,0,0,w,h);
-  try{ ctx.filter="none"; }catch(_){}
-  ctx.textAlign="center";ctx.textBaseline="middle";
-  $("#seCanvas").querySelectorAll(".seov").forEach(el=>{
-    const x=parseFloat(el.dataset.x)*w,y=parseFloat(el.dataset.y)*h;
-    const scale=parseFloat(el.dataset.scale||"1"),rot=parseFloat(el.dataset.rot||"0")*Math.PI/180;
-    const fs=parseFloat(el.dataset.frac||"0.07")*scale*h;
-    const isText=el.dataset.type==="text";
-    const f=SE_FONTS[parseInt(el.dataset.font||"0")%SE_FONTS.length];
-    ctx.font=(isText?(f.weight+" "):"")+fs+"px "+(isText?f.family:"-apple-system,system-ui,'Segoe UI',sans-serif");
-    const lines=isText?wrapLines(ctx,el.textContent,w*0.80):[el.textContent];
-    const lh=fs*1.15, total=lh*lines.length;
-    ctx.save();ctx.translate(x,y);ctx.rotate(rot);
-    if(isText){ctx.shadowColor="rgba(0,0,0,.5)";ctx.shadowBlur=fs*0.22;ctx.shadowOffsetY=fs*0.06;ctx.fillStyle=el.style.color||"#fff";}
-    lines.forEach((ln,i)=>{ctx.fillText(ln,0,(i*lh)-(total/2)+(lh/2));});
-    ctx.restore();
-  });
-  return cv.toDataURL("image/jpeg",0.82);
-}
-async function storyEditShare(){
-  try{const data=compositeStory();closeStoryEditor();const n=await shareStoryData(data,"image/jpeg");
-    toast(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte.");
-  }catch(e){toast((e&&e.message)||"Konnte Story nicht erstellen.");}
-}
 
 /* ---------- Profilseite (Pics/Clips einer Person) ---------- */
 let profNum=null,profTab="pic";
