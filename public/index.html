@@ -303,7 +303,10 @@
   .seshare{background:var(--accent);color:var(--on);border:none;border-radius:999px;width:auto;padding:9px 18px;font-weight:600;cursor:pointer}
   .sestage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
   .secanvas{position:relative;max-width:100%;max-height:100%;touch-action:none}
-  .secanvas img{display:block;width:100%;height:100%;object-fit:contain;border-radius:8px;pointer-events:none}
+  .secanvas img,.secanvas video{display:block;width:100%;height:100%;object-fit:contain;border-radius:8px;pointer-events:none}
+  /* Overlay-Ebene über Videos bei der Wiedergabe (Text/Zeichnung) */
+  .svstage{position:relative}
+  .mediaoverlay{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:2}
   /* Filterstreifen (wie bei Instagram) */
   .sefilters{display:flex;gap:9px;padding:9px 12px 11px;overflow-x:auto;background:#111;z-index:3;-webkit-overflow-scrolling:touch}
   .sefilters::-webkit-scrollbar{display:none}
@@ -312,7 +315,7 @@
   .sefilters .fch.sel .thm{border-color:var(--accent)}
   .sefilters .fch .lbl{display:block;margin-top:4px;font-size:.62rem;color:rgba(255,255,255,.72);font-family:ui-monospace,monospace;letter-spacing:.03em}
   .sefilters .fch.sel .lbl{color:var(--accent)}
-  .seov{position:absolute;transform:translate(-50%,-50%);cursor:grab;user-select:none;-webkit-user-select:none;white-space:nowrap;touch-action:none;line-height:1.15}
+  .seov{position:absolute;z-index:5;transform:translate(-50%,-50%);cursor:grab;user-select:none;-webkit-user-select:none;white-space:nowrap;touch-action:none;line-height:1.15}
   .seov.text{text-shadow:0 2px 8px rgba(0,0,0,.55);padding:2px 6px;white-space:pre-wrap;word-break:break-word;max-width:82%;text-align:center}
   .seov.active{outline:1.5px dashed rgba(255,255,255,.55);outline-offset:3px;border-radius:4px}
   .sesize{position:absolute;left:10px;top:50%;transform:translateY(-50%);height:46%;width:30px;z-index:6;display:none;align-items:center;justify-content:center}
@@ -358,7 +361,7 @@
   /* Speichern-Aktionen */
   .seactions{display:flex;gap:10px;padding:8px 12px;background:#111;z-index:3}
   .seactions button{flex:1;background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:600;cursor:pointer}
-  .kibadge{position:absolute;left:10px;bottom:10px;z-index:5;background:rgba(0,0,0,.55);color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.06em;padding:4px 8px;border-radius:7px;pointer-events:none;display:none}
+  .kibadge{position:absolute;left:10px;bottom:10px;z-index:6;background:rgba(0,0,0,.55);color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.06em;padding:4px 8px;border-radius:7px;pointer-events:none;display:none}
   .kibadge.on{display:block}
   /* Profilseite */
   .profile{position:absolute;inset:0;z-index:58;background:var(--bg);display:none;flex-direction:column}
@@ -715,7 +718,7 @@
       <button id="ssSend" disabled>Senden</button>
     </div>
   </div>
-  <input type="file" id="storyFile" accept="image/*" style="display:none" multiple>
+  <input type="file" id="storyFile" accept="image/*,video/*" style="display:none" multiple>
   <div class="storyview" id="storyview">
     <div class="svbars" id="svBars"></div>
     <div class="svhead"><div class="av" id="svAv">?</div><div style="flex:1;min-width:0"><div class="nm" id="svName">—</div><div class="tm" id="svTime"></div></div><button class="x" id="svClose">✕</button></div>
@@ -739,6 +742,7 @@
     <div class="sestage" id="seStage">
       <div class="secanvas" id="seCanvas">
         <img id="seImg" alt="">
+        <video id="seVid" playsinline muted loop style="display:none"></video>
         <canvas id="seDraw" aria-hidden="true"></canvas>
         <div class="kibadge" id="seKiBadge">KI-generiert</div>
       </div>
@@ -1328,8 +1332,8 @@ async function fetchLoop(){
       lg2.forEach(x=>{if(isMine(x)&&x.ts<=att.ref){if(att.t==="delivered"&&(x.st||1)<2){x.st=2;ch=true;}if(att.t==="read"&&(x.st||1)<3){x.st=3;x.readAt=Date.now();ch=true;}}});
       if(ch){saveLog(from,lg2);if(peer&&peer.number===from)renderThread(from);} continue; }
     if(att&&att.kind==="del"){ const lg2=logOf(from);const it=lg2.find(x=>x.ts===att.ref);if(it){it.del=true;it.att=null;it.text="";saveLog(from,lg2);if(peer&&peer.number===from)renderThread(from);changed=true;} continue; }
-    if(att&&att.kind==="post"){ addPostLocal(att.medium,{id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,medium:att.medium,mime:att.mime,data:att.data,title:att.title||"",text:att.text||"",ts:att.ts||m.ts||Date.now(),likes:{}}); feedTouched[att.medium]=true; continue; }
-    if(att&&att.kind==="story"){ const a2=storiesAll(); if(!a2.some(s=>s.id===att.id)){a2.unshift({id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,data:att.data,mime:att.mime||"image/jpeg",title:att.title||"",postId:att.postId||"",medium:att.medium||"pic",ts:att.ts||m.ts||Date.now()}); saveStories(a2); storiesTouched=true;} continue; }
+    if(att&&att.kind==="post"){ addPostLocal(att.medium,{id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,medium:att.medium,mime:att.mime,data:att.data,overlay:att.overlay||"",title:att.title||"",text:att.text||"",ts:att.ts||m.ts||Date.now(),likes:{}}); feedTouched[att.medium]=true; continue; }
+    if(att&&att.kind==="story"){ const a2=storiesAll(); if(!a2.some(s=>s.id===att.id)){a2.unshift({id:att.id,owner:att.owner||from,name:att.name,avatar:att.avatar,data:att.data,mime:att.mime||"image/jpeg",overlay:att.overlay||"",title:att.title||"",postId:att.postId||"",medium:att.medium||"pic",ts:att.ts||m.ts||Date.now()}); saveStories(a2); storiesTouched=true;} continue; }
     if(att&&att.kind==="reaction"){
       const f=feedOf(att.medium);const it=f.find(x=>x.id===att.postId); if(it){it.likes=it.likes||{};it.likes[from]=att.emoji;saveFeed(att.medium,f);feedTouched[att.medium]=true;}
       const txt=att.emoji+" hat auf deinen "+(att.medium==="pic"?"Beitrag":"Clip")+" reagiert";
@@ -1439,6 +1443,7 @@ function renderFeed(medium){
     if(medium==="pic"){const img=document.createElement("img");img.src=post.data;img.alt="";t.appendChild(img);}
     else{const v=document.createElement("video");v.src=post.data;v.muted=true;v.playsInline=true;v.preload="metadata";t.appendChild(v);
       const h=document.createElement("div");h.className="vhint";h.innerHTML='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';t.appendChild(h);}
+    if(post.overlay){const ov=document.createElement("img");ov.className="mediaoverlay";ov.src=post.overlay;t.appendChild(ov);}
     const likes=post.likes||{};const cnt=Object.keys(likes).length;
     if(cnt){const bd=document.createElement("div");bd.className="likebadge";bd.textContent=[...new Set(Object.values(likes))].slice(0,2).join("")+(cnt>1?(" "+cnt):"");t.appendChild(bd);}
     t.onclick=()=>openPost(medium,post.id);
@@ -1461,9 +1466,10 @@ function openPost(medium,id){
   sh.onclick=()=>openShare(medium,post);
   const cl=document.createElement("button");cl.className="pvclose";cl.setAttribute("aria-label","Schließen");cl.innerHTML="✕";cl.onclick=closePost;
   head.appendChild(sh);head.appendChild(cl);
-  const media=document.createElement("div");media.className="pvmedia";
+  const media=document.createElement("div");media.className="pvmedia";media.style.position="relative";
   if(medium==="pic"){const img=document.createElement("img");img.src=post.data;media.appendChild(img);}
-  else{const v=document.createElement("video");v.src=post.data;v.controls=true;v.playsInline=true;v.autoplay=true;media.appendChild(v);}
+  else{const v=document.createElement("video");v.src=post.data;v.controls=true;v.playsInline=true;v.autoplay=true;v.loop=true;media.appendChild(v);}
+  if(post.overlay){const ov=document.createElement("img");ov.className="mediaoverlay";ov.src=post.overlay;media.appendChild(ov);}
   const act=document.createElement("div");act.className="pvact";
   REACTS.forEach(em=>{const b=document.createElement("button");b.className="react";b.textContent=em;b.onclick=()=>{reactTo(medium,post,em);openPost(medium,id);};act.appendChild(b);});
   const likes=post.likes||{};const cnt=Object.keys(likes).length;
@@ -1516,7 +1522,7 @@ async function doShareSend(){
 
 async function shareStoryData(data,mime,opts){
   opts=opts||{};const ts=Date.now();const id=me.number+"-"+ts+"-"+Math.random().toString(36).slice(2,6);
-  const seg={id,owner:me.number,name:me.name,avatar:me.avatar||"",data,mime:mime||"image/jpeg",title:opts.title||"",postId:opts.postId||"",medium:opts.medium||"pic",ts};
+  const seg={id,owner:me.number,name:me.name,avatar:me.avatar||"",data,mime:mime||"image/jpeg",overlay:opts.overlay||"",title:opts.title||"",postId:opts.postId||"",medium:opts.medium||"pic",ts};
   const a=storiesAll();a.unshift(seg);saveStories(a);renderStories();
   return await fanout({kind:"story",...seg});
 }
@@ -1544,9 +1550,10 @@ function showStorySeg(){
   // altes Medium entfernen (nur img/video, Overlays behalten)
   stage.querySelectorAll(".svmedia").forEach(e=>e.remove());
   let el;
-  if((s.mime||"").startsWith("video/")){el=document.createElement("video");el.src=s.data;el.controls=false;el.autoplay=true;el.playsInline=true;el.muted=false;}
+  if((s.mime||"").startsWith("video/")){el=document.createElement("video");el.src=s.data;el.controls=false;el.autoplay=true;el.playsInline=true;el.muted=false;el.loop=true;}
   else{el=document.createElement("img");el.src=s.data;}
   el.className="svmedia";stage.insertBefore(el,stage.firstChild);
+  if(s.overlay){const ov=document.createElement("img");ov.className="svmedia mediaoverlay";ov.src=s.overlay;stage.appendChild(ov);}
   // Like-Status
   const liked=s.postId?!!((feedOf(s.medium).find(p=>p.id===s.postId)||{}).likes||{})[me.number]:false;
   $("#svLike").classList.toggle("liked",liked);
@@ -1595,18 +1602,33 @@ function buildSeFilters(dataUrl){
     b.appendChild(im);b.appendChild(l);b.onclick=()=>applySeFilter(f.css);row.appendChild(b);
   });
 }
-let seEditing=null, seAiLabel=false;
-function openStoryEditor(dataUrl){
-  const img=$("#seImg");$("#seCanvas").querySelectorAll(".seov").forEach(e=>e.remove());
-  img.onload=()=>{$("#seCanvas").style.aspectRatio=img.naturalWidth+"/"+img.naturalHeight;sizeDrawCanvas();};
-  img.src=dataUrl; seFilter="none"; img.style.filter="none";
+let seEditing=null, seAiLabel=false, seMime="image/jpeg", seMediaData="";
+function seIsVideo(){return (seMime||"").startsWith("video/");}
+function openStoryEditor(dataUrl,mime){
+  seMime=mime||"image/jpeg"; seMediaData=dataUrl;
+  const img=$("#seImg"),vid=$("#seVid");
+  $("#seCanvas").querySelectorAll(".seov").forEach(e=>e.remove());
+  if(seIsVideo()){
+    img.style.display="none"; img.removeAttribute("src");
+    vid.style.display="block";
+    vid.onloadedmetadata=()=>{$("#seCanvas").style.aspectRatio=(vid.videoWidth||9)+"/"+(vid.videoHeight||16);sizeDrawCanvas();};
+    vid.src=dataUrl; vid.style.filter="none"; try{vid.play();}catch(_){}
+  }else{
+    vid.style.display="none"; try{vid.pause();}catch(_){} vid.removeAttribute("src");
+    img.style.display="block";
+    img.onload=()=>{$("#seCanvas").style.aspectRatio=img.naturalWidth+"/"+img.naturalHeight;sizeDrawCanvas();};
+    img.src=dataUrl; img.style.filter="none";
+  }
+  seFilter="none";
+  // Speichern-Button je nach Medium (Foto -> P1CZ, Video -> CL1PZ)
+  $("#seSavePic").textContent=seIsVideo()?"＋ In CL1PZ":"＋ In P1CZ";
   $("#seEmojiRow").classList.remove("on");
   setActive(null);endEdit();drawModeOff();seDrawStrokes=[];sizeDrawCanvas();
   seAiLabel=false;$("#seKiBadge").classList.remove("on");$("#seAiBtn").classList.remove("on");
   buildSeEmoji();buildSeFilters(dataUrl);buildFontChips();buildDrawColors();
   $("#storyedit").classList.add("on");ensureSeResize();
 }
-function closeStoryEditor(){setActive(null);endEdit();drawModeOff();$("#storyedit").classList.remove("on");}
+function closeStoryEditor(){setActive(null);endEdit();drawModeOff();try{$("#seVid").pause();}catch(_){}$("#storyedit").classList.remove("on");}
 function buildSeEmoji(){const row=$("#seEmojiRow");if(row.dataset.built)return;row.dataset.built="1";
   SE_EMOJI.forEach(e=>{const b=document.createElement("button");b.type="button";b.textContent=e;b.onclick=()=>{addOverlay("emoji",e);row.classList.remove("on");};row.appendChild(b);});}
 
@@ -1774,13 +1796,8 @@ function wrapLines(ctx,text,maxW){
   });
   return out.length?out:[""];
 }
-function compositeStory(){
-  const img=$("#seImg");const w=img.naturalWidth||1080,h=img.naturalHeight||1080;
-  const cv=document.createElement("canvas");cv.width=w;cv.height=h;const ctx=cv.getContext("2d");
-  try{ ctx.filter=(seFilter&&seFilter!=="none")?seFilter:"none"; }catch(_){}
-  ctx.drawImage(img,0,0,w,h);
-  try{ ctx.filter="none"; }catch(_){}
-  // Zeichnungen
+/* Zeichnet Striche + Text/Emoji + KI-Label auf einen beliebigen Kontext (w×h) */
+function drawOverlays(ctx,w,h){
   ctx.lineCap="round";ctx.lineJoin="round";
   seDrawStrokes.forEach(s=>{ctx.strokeStyle=s.color;ctx.lineWidth=s.w*w;ctx.beginPath();s.pts.forEach((p,i)=>{const x=p.x*w,y=p.y*h;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();});
   ctx.textAlign="center";ctx.textBaseline="middle";
@@ -1799,34 +1816,57 @@ function compositeStory(){
     lines.forEach((ln,i)=>{ctx.fillText(ln,0,(i*lh)-(total/2)+(lh/2));});
     ctx.restore();
   });
-  // KI-Kennzeichen
   if(seAiLabel){const fs=Math.max(18,h*0.028);ctx.save();ctx.font="700 "+fs+"px -apple-system,system-ui,sans-serif";ctx.textAlign="left";ctx.textBaseline="bottom";
     const txt="KI-generiert",pad=fs*0.5,tw=ctx.measureText(txt).width;ctx.fillStyle="rgba(0,0,0,.55)";
     ctx.fillRect(h*0.02, h-h*0.02-fs-pad, tw+pad*2, fs+pad);ctx.fillStyle="#fff";ctx.fillText(txt,h*0.02+pad, h-h*0.02-pad*0.3);ctx.restore();}
+}
+// Foto: alles flach aufs Bild rechnen -> JPEG
+function compositeStory(){
+  const img=$("#seImg");const w=img.naturalWidth||1080,h=img.naturalHeight||1080;
+  const cv=document.createElement("canvas");cv.width=w;cv.height=h;const ctx=cv.getContext("2d");
+  try{ ctx.filter=(seFilter&&seFilter!=="none")?seFilter:"none"; }catch(_){}
+  ctx.drawImage(img,0,0,w,h);
+  try{ ctx.filter="none"; }catch(_){}
+  drawOverlays(ctx,w,h);
   return cv.toDataURL("image/jpeg",0.82);
+}
+// Video: nur die Overlays als transparentes PNG (wird beim Abspielen drübergelegt)
+function compositeOverlayPNG(){
+  const vid=$("#seVid");const w=vid.videoWidth||1080,h=vid.videoHeight||1920;
+  const hasOverlay=seDrawStrokes.length||$("#seCanvas").querySelectorAll(".seov").length||seAiLabel;
+  if(!hasOverlay)return "";
+  const cv=document.createElement("canvas");cv.width=w;cv.height=h;const ctx=cv.getContext("2d");
+  drawOverlays(ctx,w,h);
+  return cv.toDataURL("image/png");
 }
 async function storyEditShare(){
   endEdit();drawModeOff();
-  try{const data=compositeStory();closeStoryEditor();const n=await shareStoryData(data,"image/jpeg");
-    toast(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte.");
+  try{
+    if(seIsVideo()){const overlay=compositeOverlayPNG();closeStoryEditor();const n=await shareStoryData(seMediaData,seMime,{overlay});
+      toast(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte.");}
+    else{const data=compositeStory();closeStoryEditor();const n=await shareStoryData(data,"image/jpeg");
+      toast(n?("Story geteilt mit "+n):"Story gespeichert — noch keine Kontakte.");}
   }catch(e){toast((e&&e.message)||"Konnte Story nicht erstellen.");}
 }
 function storySaveToDevice(){
   endEdit();drawModeOff();
-  try{const data=compositeStory();const a=document.createElement("a");a.href=data;a.download="stilla-story.jpg";document.body.appendChild(a);a.click();a.remove();toast("Bild gespeichert");}
-  catch(e){toast((e&&e.message)||"Konnte Bild nicht speichern.");}
+  try{
+    if(seIsVideo()){const a=document.createElement("a");a.href=seMediaData;a.download="stilla-clip."+((seMime.split("/")[1]||"mp4").split(";")[0]);document.body.appendChild(a);a.click();a.remove();toast("Video gespeichert (Text/Zeichnung bleiben in der App)");}
+    else{const data=compositeStory();const a=document.createElement("a");a.href=data;a.download="stilla-story.jpg";document.body.appendChild(a);a.click();a.remove();toast("Bild gespeichert");}
+  }catch(e){toast((e&&e.message)||"Konnte nicht speichern.");}
 }
 async function storySaveToPics(){
   endEdit();drawModeOff();
-  try{const data=compositeStory();
+  try{
+    const medium=seIsVideo()?"clip":"pic";
     const id="p"+Date.now()+Math.random().toString(36).slice(2,7);
-    const post={id,owner:me.number,name:me.name,avatar:me.avatar||"",medium:"pic",mime:"image/jpeg",data,title:"",text:"",ts:Date.now(),likes:{}};
-    addPostLocal("pic",post);
-    closeStoryEditor();go("pic");renderFeed("pic");
-    // an Freunde verteilen wie ein normaler Beitrag
+    const post={id,owner:me.number,name:me.name,avatar:me.avatar||"",medium,mime:seIsVideo()?seMime:"image/jpeg",
+      data:seIsVideo()?seMediaData:compositeStory(),overlay:seIsVideo()?compositeOverlayPNG():"",title:"",text:"",ts:Date.now(),likes:{}};
+    addPostLocal(medium,post);
+    closeStoryEditor();go(medium);renderFeed(medium);
     for(const num in contacts()){const r=await lookupKeys(num);if(r&&r.kexPub)sendCtrl(num,r.kexPub,Object.assign({kind:"post"},post));}
-    toast("In P1CZ gespeichert");
-  }catch(e){toast((e&&e.message)||"Konnte nicht in P1CZ speichern.");}
+    toast(medium==="clip"?"In CL1PZ gespeichert":"In P1CZ gespeichert");
+  }catch(e){toast((e&&e.message)||"Konnte nicht speichern.");}
 }
 
 /* ---------- Profilseite (Pics/Clips einer Person) ---------- */
@@ -2245,9 +2285,15 @@ $("#compDesc").addEventListener("input",()=>{$("#compCount").textContent=$("#com
 $("#storyFile").onchange=async e=>{const inp=e.target;const fs=inp.files;
   if(!fs||!fs.length){inp.value="";return;}
   try{
-    if(fs.length===1){ const d=await shrinkImage(fs[0]);openStoryEditor(d); }
+    if(fs.length===1){
+      const f=fs[0];
+      if((f.type||"").startsWith("video/")){
+        if(f.size>MAX_VIDEO){toast("Video ist zu groß (max "+fmtSize(MAX_VIDEO)+" im Test).");inp.value="";return;}
+        const d=await fileToDataURL(f);openStoryEditor(d,f.type||"video/mp4");
+      }else{ const d=await shrinkImage(f);openStoryEditor(d,"image/jpeg"); }
+    }
     else { await addStory(fs); }
-  }catch(err){ console.log("Story-Bild-Fehler:",err&&err.message); toast("Bild konnte nicht geladen werden ("+((err&&err.message)||"?")+")."); }
+  }catch(err){ console.log("Story-Medium-Fehler:",err&&err.message); toast("Medium konnte nicht geladen werden ("+((err&&err.message)||"?")+")."); }
   inp.value="";   // ERST nach dem Verarbeiten zurücksetzen (manche Android-WebViews brechen die Datei sonst ab)
 };
 $("#seCancel").onclick=closeStoryEditor;
