@@ -363,6 +363,8 @@
   .seactions button{flex:1;background:rgba(255,255,255,.14);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:600;cursor:pointer}
   .kibadge{position:absolute;left:10px;bottom:10px;z-index:6;background:rgba(0,0,0,.55);color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.06em;padding:4px 8px;border-radius:7px;pointer-events:none;display:none}
   .kibadge.on{display:block}
+  @keyframes nudgeShake{0%,100%{transform:translate(0,0)}15%{transform:translate(-8px,2px)}30%{transform:translate(8px,-2px)}45%{transform:translate(-7px,1px)}60%{transform:translate(6px,-1px)}75%{transform:translate(-4px,1px)}90%{transform:translate(3px,0)}}
+  body.nudging{animation:nudgeShake .5s ease}
   /* Profilseite */
   .profile{position:absolute;inset:0;z-index:58;background:var(--bg);display:none;flex-direction:column}
   .profile.on{display:flex}
@@ -546,6 +548,7 @@
       <button class="back" id="backBtn">‹</button>
       <div class="av" id="cvav">?</div>
       <div style="flex:1;min-width:0"><div class="nm" id="peerName">—</div><div class="nu" id="peerNumLbl"></div></div>
+      <button class="ic" id="nudgeBtn" aria-label="Anstupsen" title="Anstupsen">👋</button>
       <button class="ic" id="chatMenuBtn" aria-label="Menü"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
     <div class="e2e">🔒 Ende-zu-Ende verschlüsselt</div>
@@ -1027,6 +1030,23 @@ async function lookupKeys(num){
   return null;
 }
 async function sendCtrl(num,kexPub,att){try{const env=encrypt(kexPub,packMsg("",att));await api("/send","POST",{to:num,from:me.number,envelope:env,ts:Date.now()});return true;}catch{return false;}}
+/* ---- Anstupsen (Stups) ---- */
+let nudgeCooldown=0;
+async function sendNudge(num){
+  if(!num)return; const now=Date.now(); if(now-nudgeCooldown<2000){return;} nudgeCooldown=now;
+  const p=contacts()[num]; const r=await lookupKeys(num); const kp=(r&&r.kexPub)||(p&&p.kexPub);
+  if(!kp){toast("Konnte nicht anstupsen.");return;}
+  const ok=await sendCtrl(num,kp,{kind:"nudge",name:(me&&me.name)||"",ts:now});
+  const lg=logOf(num);lg.push({from:me.number,mine:true,text:"👋 Angestupst",att:null,ts:now,st:1});saveLog(num,lg);
+  if(peer&&peer.number===num)renderThread(num);
+  try{if(navigator.vibrate)navigator.vibrate(25);}catch(_){}
+  nudgeShake();toast(ok?"👋 Angestupst":"👋 (wird zugestellt)");
+}
+function nudgeShake(){const b=document.body;b.classList.remove("nudging");void b.offsetWidth;b.classList.add("nudging");setTimeout(()=>b.classList.remove("nudging"),520);}
+function nudgeReceived(name){
+  try{if(navigator.vibrate)navigator.vibrate([40,70,40]);}catch(_){}
+  nudgeShake();toast("👋 "+(name||"Jemand")+" hat dich angestupst!");
+}
 
 function renderContacts(){
   renderRequests();renderPresenceBar();
@@ -1326,6 +1346,9 @@ async function fetchLoop(){
     if(att&&att.kind==="friendreq"){ if(!contacts()[from]){const ri=reqin();ri[from]={name:att.name||"",kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||"",text:att.text||"",ts:att.ts||m.ts||Date.now()};saveReqin(ri);reqTouched=true;} continue; }
     if(att&&att.kind==="friendacc"){ const c=contacts();c[from]={name:att.name||("Nummer "+fmt(from)),kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||""};saveContacts(c);const ro=reqout();delete ro[from];saveReqout(ro);changed=true; continue; }
     if(att&&att.kind==="frienddecline"){ const ro=reqout();delete ro[from];saveReqout(ro);changed=true; continue; }
+    if(att&&att.kind==="nudge"){ const lg2=logOf(from);lg2.push({from,mine:false,text:"👋 hat dich angestupst",att:null,ts:att.ts||m.ts||Date.now()});saveLog(from,lg2);changed=true;
+      nudgeReceived(att.name|| (contacts()[from]&&contacts()[from].name) || ("Nummer "+fmt(from)));
+      if(peer&&peer.number===from)openPeerTouched=true;else u[from]=(u[from]||0)+1; continue; }
     if(att&&att.kind==="storylike"){ if(contacts()[from]){const lg2=logOf(from);lg2.push({from,mine:false,text:"❤️ hat auf deine ST0RY reagiert",att:null,ts:att.ts||m.ts||Date.now()});saveLog(from,lg2);changed=true;if(peer&&peer.number===from)openPeerTouched=true;else u[from]=(u[from]||0)+1;} continue; }
 
     if(att&&att.kind==="ack"){ const lg2=logOf(from);let ch=false;
@@ -2193,6 +2216,7 @@ $("#fab").onclick=()=>{$("#sheetNum").textContent=fmt(me.number);$("#addsheet").
 $("#addBtn").onclick=addByNumber;
 $("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")addByNumber();});
 $("#backBtn").onclick=()=>{peer=null;go("home");};
+$("#nudgeBtn").onclick=()=>{if(peer)sendNudge(peer.number);};
 $("#chatMenuBtn").onclick=openChatHeaderMenu;
 $("#sendBtn").onclick=sendMsg;
 $("#msg").addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg();});
