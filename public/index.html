@@ -620,7 +620,7 @@
       <p class="sub" style="font-size:.74rem;margin:4px 2px 0">An = niemand sieht, dass du online bist (kein grüner Punkt) – und du siehst den Status der anderen dann auch nicht.</p>
       <label class="switch"><span>Lesebestätigung (blauer Haken)</span><input type="checkbox" id="optReceipts"><span class="sw"></span></label>
       <p class="sub" style="font-size:.74rem;margin:4px 2px 0">Aus = du sendest keine blauen Haken und siehst auch keine der anderen.</p>
-      <label class="switch"><span>Gelesene Nachrichten nach 24 h löschen</span><input type="checkbox" id="optAutodel"><span class="sw"></span></label>
+      <label class="switch"><span>Nachrichten nach 24 h automatisch löschen</span><input type="checkbox" id="optAutodel"><span class="sw"></span></label>
       <p class="sub" style="font-size:.74rem;margin:6px 2px 0">Screenshot-Warnungen kommen mit der nativen App – im Browser technisch nicht möglich.</p>
 
       <div class="setlbl">BLOCKIERT</div>
@@ -1279,11 +1279,11 @@ function renderBlocked(){
     row.appendChild(btn);box.appendChild(row);});
 }
 
-/* löscht lokal gelesene Nachrichten älter als 24 h (falls aktiviert) */
+/* löscht lokal Nachrichten älter als 24 h (falls aktiviert) – gesendet wie empfangen */
 function autodelSweep(){
   if(!autodelOn())return;const now=Date.now();let any=false;
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k||k.indexOf("stilla_log_")!==0)continue;
-    const lg=LS.get(k,[]);const keep=lg.filter(m=>!(m.readAt&&now-m.readAt>DAY));
+    const lg=LS.get(k,[]);const keep=lg.filter(m=>!(m.ts&&now-m.ts>DAY));
     if(keep.length!==lg.length){LS.set(k,keep);any=true;}}
   if(any){if(peer)renderThread(peer.number);if($("#home").classList.contains("on"))renderContacts();}
 }
@@ -2106,6 +2106,7 @@ async function saveSettings(){
   LS.set("stilla_receipts",$("#optReceipts").checked);
   LS.set("stilla_autodel",$("#optAutodel").checked);
   LS.set("stilla_invisible",$("#optInvis").checked);
+  autodelSweep();   // sofort anwenden, nicht erst beim nächsten Abruf
   refreshPresence();
   setAv($("#homeAv"),me);
   // eigenen Kontakt-Eintrag (falls vorhanden) aktualisieren, damit die Vorschau stimmt
