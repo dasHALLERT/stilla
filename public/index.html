@@ -939,8 +939,8 @@ function encrypt(theirKexPubB64,text){const n=nacl.randomBytes(24);const box=nac
 function decrypt(theirKexPubB64,env){const m=nacl.box.open(unb64(env.c),unb64(env.n),unb64(theirKexPubB64),unb64(me.kexSec));return m?dec.decode(m):null;}
 
 /* ---------- Nachrichten-Format (Text + optionaler Anhang) ---------- */
-function packMsg(text,att){return JSON.stringify({v:1,t:text||"",a:att||null});}
-function unpackMsg(raw){try{const o=JSON.parse(raw);if(o&&o.v===1)return{text:o.t||"",att:o.a||null};}catch{}return{text:raw,att:null};}
+function packMsg(text,att,exp){return JSON.stringify({v:1,t:text||"",a:att||null,x:exp?1:0});}
+function unpackMsg(raw){try{const o=JSON.parse(raw);if(o&&o.v===1)return{text:o.t||"",att:o.a||null,exp:!!o.x};}catch{}return{text:raw,att:null,exp:false};}
 
 /* Bild verkleinern -> data-URL (JPEG), damit die Umschläge klein bleiben */
 /* Bild dekodieren – erst createImageBitmap (verträgt mehr Handy-Formate/WebViews),
@@ -1195,8 +1195,9 @@ function closeSheets(){document.querySelectorAll(".sheet").forEach(s=>s.classLis
 async function deliver(text,att){
   if(!peer)return;
   const ts=Date.now();
-  const lg=logOf(peer.number);lg.push({from:me.number,mine:true,text:text||"",att:att||null,ts,st:1});saveLog(peer.number,lg);renderThread(peer.number);renderContacts();playSnd("sent");
-  try{const env=encrypt(peer.kexPub,packMsg(text,att));await api("/send","POST",{to:peer.number,from:me.number,envelope:env,ts});}
+  const exp=autodelOn();   // hat DER SENDER 24h-Löschen an, läuft die Nachricht bei BEIDEN ab
+  const lg=logOf(peer.number);lg.push({from:me.number,mine:true,text:text||"",att:att||null,ts,st:1,exp});saveLog(peer.number,lg);renderThread(peer.number);renderContacts();playSnd("sent");
+  try{const env=encrypt(peer.kexPub,packMsg(text,att,exp));await api("/send","POST",{to:peer.number,from:me.number,envelope:env,ts});}
   catch(e){toast("Konnte nicht senden.");}
 }
 
@@ -1293,11 +1294,13 @@ function renderBlocked(){
     row.appendChild(btn);box.appendChild(row);});
 }
 
-/* löscht lokal Nachrichten älter als 24 h (falls aktiviert) – gesendet wie empfangen */
+/* Löscht Nachrichten älter als 24 h. Wirkt, wenn ICH 24h-Löschen an habe ODER
+   die Nachricht als ablaufend markiert ist (der andere hat es für den Chat an).
+   So verschwinden die Nachrichten bei BEIDEN. */
 function autodelSweep(){
-  if(!autodelOn())return;const now=Date.now();let any=false;
+  const mine=autodelOn();const now=Date.now();let any=false;
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k||k.indexOf("stilla_log_")!==0)continue;
-    const lg=LS.get(k,[]);const keep=lg.filter(m=>!(m.ts&&now-m.ts>DAY));
+    const lg=LS.get(k,[]);const keep=lg.filter(m=>!(m.ts&&now-m.ts>DAY&&(mine||m.exp)));
     if(keep.length!==lg.length){LS.set(k,keep);any=true;}}
   if(any){if(peer)renderThread(peer.number);if($("#home").classList.contains("on"))renderContacts();}
 }
@@ -1354,7 +1357,7 @@ async function fetchLoop(){
     let env=m.envelope; if(typeof env==="string"){try{env=JSON.parse(env);}catch{}}
     const raw=(p&&p.kexPub)?decrypt(p.kexPub,env):null;
     if(raw==null) continue;
-    const {text,att}=unpackMsg(raw);
+    const {text,att,exp}=unpackMsg(raw);
 
     // ---- Freundschaftsanfragen ----
     if(att&&att.kind==="friendreq"){ if(!contacts()[from]){const ri=reqin();ri[from]={name:att.name||"",kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||"",text:att.text||"",ts:att.ts||m.ts||Date.now()};saveReqin(ri);reqTouched=true;playSnd("friend");} continue; }
@@ -1382,7 +1385,7 @@ async function fetchLoop(){
     const lg=logOf(from);
     if(lg.some(x=>x.ts===m.ts&&x.from===from)) continue; // Dublette
     const isOpen=peer&&peer.number===from;
-    lg.push({from,mine:false,text,att,ts:m.ts||Date.now(),readAt:isOpen?Date.now():0});saveLog(from,lg);changed=true;playSnd("msgin");
+    lg.push({from,mine:false,text,att,ts:m.ts||Date.now(),readAt:isOpen?Date.now():0,exp});saveLog(from,lg);changed=true;playSnd("msgin");
     deliveredTo[from]=Math.max(deliveredTo[from]||0,m.ts||0);
     if(isOpen){openPeerTouched=true;readTo[from]=Math.max(readTo[from]||0,m.ts||0);}
     else{u[from]=(u[from]||0)+1;}
