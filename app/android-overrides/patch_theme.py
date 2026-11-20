@@ -46,6 +46,24 @@ def patch_styles():
     else:
         print("styles.xml: nichts zu ändern (schon gesetzt?)")
 
+MANIFEST = pathlib.Path("android/app/src/main/AndroidManifest.xml")
+def patch_manifest():
+    if not MANIFEST.exists():
+        print("AndroidManifest.xml fehlt – übersprungen"); return
+    t = MANIFEST.read_text(encoding="utf-8")
+    perms = [
+        '<uses-permission android:name="android.permission.RECORD_AUDIO" />',
+        '<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />',
+    ]
+    add = "".join("    "+p+"\n" for p in perms if p not in t)
+    if add:
+        t = t.replace("<application", add+"\n    <application", 1)
+        MANIFEST.write_text(t, encoding="utf-8")
+        print("AndroidManifest.xml: Mikrofon-Berechtigung ergänzt")
+    else:
+        print("AndroidManifest.xml: Mikrofon-Berechtigung schon vorhanden")
+
 ensure_color()
 patch_styles()
+patch_manifest()
 print("Theme-Patch fertig.")

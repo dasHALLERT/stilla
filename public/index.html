@@ -371,6 +371,23 @@
   .bgpick{display:flex;flex-wrap:wrap;gap:10px}
   .bgpick button{width:42px;height:42px;border-radius:11px;border:2px solid var(--line);cursor:pointer;padding:0}
   .bgpick button.sel{border-color:var(--accent);transform:scale(1.08)}
+  /* Sprachnachricht: Aufnahme-Leiste */
+  .recbar{display:none;align-items:center;gap:10px;flex:1;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:6px 8px 6px 12px}
+  .inbar.recording .recbar{display:flex}
+  .inbar.recording #msg,.inbar.recording #emojiBtn,.inbar.recording #clipBtn,.inbar.recording #sendBtn,.inbar.recording #micBtn{display:none}
+  .recdot{width:11px;height:11px;border-radius:50%;background:#ff5a6e;animation:recpulse 1s infinite;flex:none}
+  @keyframes recpulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .rectime{font-family:ui-monospace,monospace;font-size:.92rem;color:var(--fg)}
+  .recinfo{flex:1;color:var(--muted);font-size:.84rem}
+  .recx{background:none;border:none;color:var(--muted);width:34px;height:34px;cursor:pointer;flex:none;padding:6px}
+  .recx svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2}
+  /* Sprachnachricht: Player im Chat */
+  .voicemsg{display:flex;align-items:center;gap:10px;min-width:170px;padding:2px 2px}
+  .vplay{flex:none;width:38px;height:38px;border-radius:50%;border:none;background:var(--accent);color:var(--on);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .vplay svg{width:18px;height:18px;fill:currentColor}
+  .vbar{flex:1;height:4px;border-radius:3px;background:rgba(127,127,127,.35);position:relative;overflow:hidden}
+  .vfill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--accent)}
+  .vdur{flex:none;font-family:ui-monospace,monospace;font-size:.78rem;color:var(--muted)}
   /* Profilseite */
   .profile{position:absolute;inset:0;z-index:58;background:var(--bg);display:none;flex-direction:column}
   .profile.on{display:flex}
@@ -561,12 +578,19 @@
     <div class="e2e">🔒 Ende-zu-Ende verschlüsselt</div>
     <div class="thread" id="thread"></div>
     <div class="emojibar" id="emojibar"></div>
-    <div class="inbar">
+    <div class="inbar" id="inbar">
       <button class="ic emo" id="emojiBtn" aria-label="Emoji"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4 4 0 007 0"/><circle cx="9" cy="10" r="0.6" fill="currentColor"/><circle cx="15" cy="10" r="0.6" fill="currentColor"/></svg></button>
       <button class="ic clip" id="clipBtn" aria-label="Datei"><svg viewBox="0 0 24 24"><path d="M21 11.5l-8.5 8.5a5 5 0 01-7-7l8.5-8.5a3.3 3.3 0 014.7 4.7l-8.5 8.5a1.6 1.6 0 01-2.3-2.3l7.8-7.8"/></svg></button>
       <input type="file" id="chatFile" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.gif" style="display:none" multiple>
       <input id="msg" placeholder="Nachricht…" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="send" inputmode="text">
       <button class="snd" id="sendBtn"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4v6l12 2-12 2z"/></svg></button>
+      <button class="snd" id="micBtn" aria-label="Sprachnachricht"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button>
+      <div class="recbar" id="recbar">
+        <button class="recx" id="recCancel" aria-label="Abbrechen"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></button>
+        <span class="recdot"></span><span class="rectime" id="recTime">0:00</span>
+        <span class="recinfo">Aufnahme…</span>
+        <button class="snd" id="recSend" aria-label="Senden"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4v6l12 2-12 2z"/></svg></button>
+      </div>
     </div>
   </div>
 
@@ -1008,6 +1032,37 @@ async function shrinkImageSquare(file){
 }
 /* beliebige Datei -> data-URL */
 function fileToDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(new Error("Datei konnte nicht gelesen werden."));r.readAsDataURL(file);});}
+function fmtDur(sec){sec=Math.max(0,Math.round(sec));const m=Math.floor(sec/60),s=sec%60;return m+":"+(s<10?"0":"")+s;}
+const PLAY_SVG='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const PAUSE_SVG='<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+/* ---- Sprachnachrichten (Aufnahme über Mikrofon, verschlüsselt gesendet) ---- */
+let mediaRec=null,recChunks=[],recStream=null,recStart=0,recTimer=null,recMime="";
+async function startVoice(){
+  if(!peer)return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||typeof MediaRecorder==="undefined"){toast("Mikrofon hier nicht verfügbar.");return;}
+  let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){toast("Kein Mikrofon-Zugriff – bitte erlauben.");return;}
+  recStream=stream;
+  recMime=(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported("audio/webm;codecs=opus"))?"audio/webm;codecs=opus":((MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported("audio/mp4"))?"audio/mp4":"");
+  try{mediaRec=recMime?new MediaRecorder(stream,{mimeType:recMime}):new MediaRecorder(stream);}catch(_){try{mediaRec=new MediaRecorder(stream);}catch(e2){toast("Aufnahme nicht möglich.");stopTracks();return;}}
+  recChunks=[];mediaRec.ondataavailable=e=>{if(e.data&&e.data.size)recChunks.push(e.data);};
+  try{mediaRec.start();}catch(_){toast("Aufnahme nicht möglich.");stopTracks();return;}
+  recStart=Date.now();$("#inbar").classList.add("recording");$("#recTime").textContent="0:00";
+  recTimer=setInterval(()=>{$("#recTime").textContent=fmtDur((Date.now()-recStart)/1000);},200);
+}
+function stopTracks(){if(recTimer){clearInterval(recTimer);recTimer=null;}if(recStream){try{recStream.getTracks().forEach(t=>t.stop());}catch(_){}}recStream=null;$("#inbar").classList.remove("recording");}
+function cancelVoice(){if(mediaRec&&mediaRec.state!=="inactive"){mediaRec.onstop=null;try{mediaRec.stop();}catch(_){}}mediaRec=null;stopTracks();}
+function sendVoice(){
+  if(!mediaRec){stopTracks();return;}
+  const dur=Math.round((Date.now()-recStart)/1000);const mr=mediaRec;mediaRec=null;
+  mr.onstop=async()=>{ stopTracks();
+    if(!recChunks.length||dur<1){toast("Zu kurz.");return;}
+    const blob=new Blob(recChunks,{type:recMime||"audio/webm"});
+    if(blob.size>MAX_FILE){toast("Sprachnachricht zu lang (max "+fmtSize(MAX_FILE)+" im Test).");return;}
+    try{const data=await fileToDataURL(blob);deliver("",{kind:"voice",mime:blob.type,data,dur});}catch(_){toast("Konnte Aufnahme nicht senden.");}
+  };
+  try{mr.stop();}catch(_){stopTracks();}
+}
+function updateSendMic(){const has=($("#msg").value||"").trim().length>0;$("#sendBtn").style.display=has?"":"none";$("#micBtn").style.display=has?"none":"";}
 function fmtSize(b){if(b<1024)return b+" B";if(b<1048576)return(b/1024).toFixed(0)+" KB";return(b/1048576).toFixed(1)+" MB";}
 function fileEmoji(mime,name){const n=(name||"").toLowerCase();
   if((mime||"").startsWith("video/"))return"🎞️";if((mime||"").startsWith("audio/"))return"🎵";
@@ -1125,7 +1180,7 @@ function renderContacts(){
 
 function renderThread(n){
   const box=$("#thread");box.innerHTML="";
-  applyChatBg(n);updateChatIndicator();
+  applyChatBg(n);updateChatIndicator();updateSendMic();
   logOf(n).slice().sort((a,b)=>a.ts-b.ts).forEach(m=>{
     if(m.sys){const s=document.createElement("div");s.className="sysline";s.textContent=m.text;box.appendChild(s);return;}
     const mine=isMine(m);
@@ -1150,6 +1205,16 @@ function renderThread(n){
       link.innerHTML=`<span class="fi">${fileEmoji(a.mime,a.name)}</span><span class="fm"><span class="fn">${esc(a.name||"Datei")}</span><span class="fs">${a.size?fmtSize(a.size):"herunterladen"}</span></span>`;
       d.appendChild(link);
       if(m.text){const c=document.createElement("div");c.className="cap";c.textContent=m.text;d.appendChild(c);}
+    }else if(a&&a.kind==="voice"){
+      const vm=document.createElement("div");vm.className="voicemsg";
+      const pb=document.createElement("button");pb.className="vplay";pb.innerHTML=PLAY_SVG;
+      const au=new Audio(a.data);
+      const bar=document.createElement("div");bar.className="vbar";const fill=document.createElement("div");fill.className="vfill";bar.appendChild(fill);
+      const td=document.createElement("span");td.className="vdur";td.textContent=fmtDur(a.dur||0);
+      pb.onclick=()=>{if(au.paused){au.play().catch(()=>{});pb.innerHTML=PAUSE_SVG;}else{au.pause();pb.innerHTML=PLAY_SVG;}};
+      au.ontimeupdate=()=>{const dd=au.duration&&isFinite(au.duration)?au.duration:(a.dur||1);fill.style.width=(100*au.currentTime/dd)+"%";td.textContent=fmtDur(au.currentTime);};
+      au.onended=()=>{pb.innerHTML=PLAY_SVG;fill.style.width="0%";td.textContent=fmtDur(a.dur||0);};
+      vm.appendChild(pb);vm.appendChild(bar);vm.appendChild(td);d.appendChild(vm);
     }else{
       d.textContent=m.text;
     }
@@ -1355,7 +1420,7 @@ function autodelSweep(){
   if(any){if(peer)renderThread(peer.number);if($("#home").classList.contains("on"))renderContacts();}
 }
 async function sendMsg(){
-  const t=$("#msg").value.trim();if(!t||!peer)return;$("#msg").value="";
+  const t=$("#msg").value.trim();if(!t||!peer)return;$("#msg").value="";updateSendMic();
   closeEmoji();
   deliver(t,null);
 }
@@ -2291,7 +2356,11 @@ $("#nudgeBtn").onclick=()=>{if(peer)sendNudge(peer.number);};
 $("#chatDelInd").onclick=()=>{if(peer)openChatSettings(peer.number);};
 $("#chatMenuBtn").onclick=openChatHeaderMenu;
 $("#sendBtn").onclick=sendMsg;
+$("#micBtn").onclick=startVoice;
+$("#recSend").onclick=sendVoice;
+$("#recCancel").onclick=cancelVoice;
 $("#msg").addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg();});
+$("#msg").addEventListener("input",updateSendMic);
 
 /* ---------- Emoji-Panel ---------- */
 const STILLA_EMO="🤫 🌙 ✨ 🌊 🕊️ 🫧 💤 🔕 🧊 🪶";
