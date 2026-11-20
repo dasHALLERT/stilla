@@ -365,6 +365,12 @@
   .kibadge.on{display:block}
   @keyframes nudgeShake{0%,100%{transform:translate(0,0)}15%{transform:translate(-8px,2px)}30%{transform:translate(8px,-2px)}45%{transform:translate(-7px,1px)}60%{transform:translate(6px,-1px)}75%{transform:translate(-4px,1px)}90%{transform:translate(3px,0)}}
   body.nudging{animation:nudgeShake .5s ease}
+  .sysline{align-self:center;max-width:82%;text-align:center;margin:8px auto;font-size:.75rem;color:var(--muted);background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:12px;padding:5px 12px}
+  .chatdelind{display:none}
+  .chatdelind.on{display:flex}
+  .bgpick{display:flex;flex-wrap:wrap;gap:10px}
+  .bgpick button{width:42px;height:42px;border-radius:11px;border:2px solid var(--line);cursor:pointer;padding:0}
+  .bgpick button.sel{border-color:var(--accent);transform:scale(1.08)}
   /* Profilseite */
   .profile{position:absolute;inset:0;z-index:58;background:var(--bg);display:none;flex-direction:column}
   .profile.on{display:flex}
@@ -548,6 +554,7 @@
       <button class="back" id="backBtn">‹</button>
       <div class="av" id="cvav">?</div>
       <div style="flex:1;min-width:0"><div class="nm" id="peerName">—</div><div class="nu" id="peerNumLbl"></div></div>
+      <button class="ic chatdelind" id="chatDelInd" aria-label="24-Stunden-Löschen aktiv" title="24-Stunden-Löschen aktiv – tippen für Chat-Einstellungen">⏳</button>
       <button class="ic" id="nudgeBtn" aria-label="Anstupsen" title="Anstupsen">👋</button>
       <button class="ic" id="chatMenuBtn" aria-label="Menü"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
@@ -700,6 +707,18 @@
     </div>
   </div>
 
+  <!-- SHEET: Chat-Einstellungen (pro Chat) -->
+  <div class="sheet" id="chatcfgSheet">
+    <button class="x" data-close>✕</button>
+    <div class="inner">
+      <h3>Chat-Einstellungen</h3>
+      <p class="sub" id="chatcfgWho" style="margin:0 0 10px"></p>
+      <label class="switch"><span>Nachrichten nach 24 h automatisch löschen<br><span style="font-size:.74rem;color:var(--muted)">Gilt für euch beide – der andere wird informiert.</span></span><input type="checkbox" id="cfgAutodel"><span class="sw"></span></label>
+      <p class="sub" style="margin:14px 2px 6px">Hintergrund</p>
+      <div class="bgpick" id="cfgBg"></div>
+    </div>
+  </div>
+
   <div class="lightbox" id="lightbox"><button class="x" data-lbclose>✕</button><img id="lbImg" alt="" style="display:none"><video id="lbVid" controls playsinline style="display:none"></video></div>
   <div class="postview" id="postview"><div class="pvcard" id="pvCard"></div></div>
   <div class="composer" id="composer">
@@ -830,6 +849,21 @@ const pins=()=>LS.get("stilla_pins",[]);
 const savePins=a=>LS.set("stilla_pins",a);
 const receiptsOn=()=>LS.get("stilla_receipts",true);
 const autodelOn=()=>LS.get("stilla_autodel",false);
+/* ---- Pro-Chat-Einstellungen (Priorität über die globale) ---- */
+const chatCfg=()=>LS.get("stilla_chatcfg",{});
+const saveChatCfg=c=>LS.set("stilla_chatcfg",c);
+function chatAutodel(num){const c=chatCfg()[num];if(c&&typeof c.autodel==="boolean")return c.autodel;return autodelOn();} // Override, sonst globale Voreinstellung
+function chatBg(num){const c=chatCfg()[num];return (c&&c.bg)||"";}
+function pushSys(num,text){const lg=logOf(num);lg.push({sys:true,text,ts:Date.now()});saveLog(num,lg);if(peer&&peer.number===num)renderThread(num);}
+function setChatAutodel(num,val){
+  const c=chatCfg();c[num]=Object.assign({},c[num]);c[num].autodel=val;saveChatCfg(c);
+  const p=contacts()[num]; if(p&&p.kexPub)sendCtrl(num,p.kexPub,{kind:"chatcfg",autodel:val,name:(me&&me.name)||""});
+  pushSys(num,"Du hast 24-Stunden-Löschen "+(val?"aktiviert":"deaktiviert")+".");
+  updateChatIndicator();
+}
+function setChatBg(num,bg){const c=chatCfg();c[num]=Object.assign({},c[num]);c[num].bg=bg;saveChatCfg(c);if(peer&&peer.number===num)applyChatBg(num);}
+function applyChatBg(num){const t=$("#thread");if(!t)return;const bg=chatBg(num);t.style.background=bg||"";}
+function updateChatIndicator(){const el=$("#chatDelInd");if(!el||!peer)return;el.classList.toggle("on",chatAutodel(peer.number));}
 const invisibleOn=()=>LS.get("stilla_invisible",false);
 const DAY=24*3600*1000;
 /* ---- Benachrichtigungstöne (eingebettet, winzig, offline) ---- */
@@ -1091,7 +1125,9 @@ function renderContacts(){
 
 function renderThread(n){
   const box=$("#thread");box.innerHTML="";
+  applyChatBg(n);updateChatIndicator();
   logOf(n).slice().sort((a,b)=>a.ts-b.ts).forEach(m=>{
+    if(m.sys){const s=document.createElement("div");s.className="sysline";s.textContent=m.text;box.appendChild(s);return;}
     const mine=isMine(m);
     const d=document.createElement("div");d.className="bub "+(mine?"out":"in");
     const a=m.att;
@@ -1195,7 +1231,7 @@ function closeSheets(){document.querySelectorAll(".sheet").forEach(s=>s.classLis
 async function deliver(text,att){
   if(!peer)return;
   const ts=Date.now();
-  const exp=autodelOn();   // hat DER SENDER 24h-Löschen an, läuft die Nachricht bei BEIDEN ab
+  const exp=chatAutodel(peer.number);   // 24h-Löschen für DIESEN Chat (Override oder global) -> läuft bei BEIDEN ab
   const lg=logOf(peer.number);lg.push({from:me.number,mine:true,text:text||"",att:att||null,ts,st:1,exp});saveLog(peer.number,lg);renderThread(peer.number);renderContacts();playSnd("sent");
   try{const env=encrypt(peer.kexPub,packMsg(text,att,exp));await api("/send","POST",{to:peer.number,from:me.number,envelope:env,ts});}
   catch(e){toast("Konnte nicht senden.");}
@@ -1213,9 +1249,22 @@ function openMsgMenu(num,m){
   if(!mine&&!m.del)items.push({label:"Melden",danger:true,fn:()=>openReport(num,m.text||(m.att&&m.att.kind?("["+m.att.kind+"]"):""))});
   openMenu(m.del?"Gelöschte Nachricht":(mine?"Deine Nachricht":"Nachricht"),items);
 }
+const CHAT_BGS=["","#141b26","#0e1a16","#1a1324","#231a12","#0f1830","#241515"];
+function openChatSettings(num){
+  if(!num)return;
+  const p=contacts()[num]||{};
+  $("#chatcfgWho").textContent=(p.name?p.name+" · ":"")+"Nummer "+fmt(num);
+  $("#cfgAutodel").checked=chatAutodel(num);
+  $("#cfgAutodel").onchange=()=>setChatAutodel(num,$("#cfgAutodel").checked);
+  const box=$("#cfgBg");box.innerHTML="";const cur=chatBg(num);
+  CHAT_BGS.forEach(c=>{const b=document.createElement("button");b.type="button";b.style.background=c||"var(--bg)";if((c||"")===cur)b.classList.add("sel");
+    b.onclick=()=>{setChatBg(num,c);box.querySelectorAll("button").forEach(x=>x.classList.remove("sel"));b.classList.add("sel");};box.appendChild(b);});
+  $("#chatcfgSheet").classList.add("on");
+}
 function openChatHeaderMenu(){
   if(!peer)return;
   openMenu(peer.name||("Nummer "+fmt(peer.number)),[
+    {label:"Chat-Einstellungen",fn:()=>openChatSettings(peer.number)},
     {label:"Chat löschen (nur bei dir)",danger:true,fn:()=>{clearChat(peer.number);go("home");}},
     {label:"Melden",danger:true,fn:()=>openReport(peer.number,"")},
     {label:"Blockieren",danger:true,fn:()=>blockUser(peer.number)}
@@ -1298,9 +1347,10 @@ function renderBlocked(){
    die Nachricht als ablaufend markiert ist (der andere hat es für den Chat an).
    So verschwinden die Nachrichten bei BEIDEN. */
 function autodelSweep(){
-  const mine=autodelOn();const now=Date.now();let any=false;
+  const now=Date.now();let any=false;
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k||k.indexOf("stilla_log_")!==0)continue;
-    const lg=LS.get(k,[]);const keep=lg.filter(m=>!(m.ts&&now-m.ts>DAY&&(mine||m.exp)));
+    const num=k.slice("stilla_log_".length);const eff=chatAutodel(num);
+    const lg=LS.get(k,[]);const keep=lg.filter(m=>!(m.ts&&now-m.ts>DAY&&(eff||m.exp)));
     if(keep.length!==lg.length){LS.set(k,keep);any=true;}}
   if(any){if(peer)renderThread(peer.number);if($("#home").classList.contains("on"))renderContacts();}
 }
@@ -1363,6 +1413,9 @@ async function fetchLoop(){
     if(att&&att.kind==="friendreq"){ if(!contacts()[from]){const ri=reqin();ri[from]={name:att.name||"",kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||"",text:att.text||"",ts:att.ts||m.ts||Date.now()};saveReqin(ri);reqTouched=true;playSnd("friend");} continue; }
     if(att&&att.kind==="friendacc"){ const c=contacts();c[from]={name:att.name||("Nummer "+fmt(from)),kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||""};saveContacts(c);const ro=reqout();delete ro[from];saveReqout(ro);changed=true;playSnd("connected"); continue; }
     if(att&&att.kind==="frienddecline"){ const ro=reqout();delete ro[from];saveReqout(ro);changed=true; continue; }
+    if(att&&att.kind==="chatcfg"){ const c=chatCfg();c[from]=Object.assign({},c[from]);c[from].autodel=!!att.autodel;saveChatCfg(c);
+      pushSys(from,(att.name||(contacts()[from]&&contacts()[from].name)||"Dein Kontakt")+" hat 24-Stunden-Löschen "+(att.autodel?"aktiviert":"deaktiviert")+".");
+      if(peer&&peer.number===from){updateChatIndicator();}else u[from]=(u[from]||0)+1; changed=true; continue; }
     if(att&&att.kind==="nudge"){ const lg2=logOf(from);lg2.push({from,mine:false,text:"👋 hat dich angestupst",att:null,ts:att.ts||m.ts||Date.now()});saveLog(from,lg2);changed=true;
       nudgeReceived(att.name|| (contacts()[from]&&contacts()[from].name) || ("Nummer "+fmt(from)));
       if(peer&&peer.number===from)openPeerTouched=true;else u[from]=(u[from]||0)+1; continue; }
@@ -2235,6 +2288,7 @@ $("#addBtn").onclick=addByNumber;
 $("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")addByNumber();});
 $("#backBtn").onclick=()=>{peer=null;go("home");};
 $("#nudgeBtn").onclick=()=>{if(peer)sendNudge(peer.number);};
+$("#chatDelInd").onclick=()=>{if(peer)openChatSettings(peer.number);};
 $("#chatMenuBtn").onclick=openChatHeaderMenu;
 $("#sendBtn").onclick=sendMsg;
 $("#msg").addEventListener("keydown",e=>{if(e.key==="Enter")sendMsg();});
