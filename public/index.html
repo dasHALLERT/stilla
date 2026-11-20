@@ -1377,16 +1377,16 @@ function sendVoice(){
   stopTracks();
   if(!chunks.length||dur<1){toast("Zu kurz.");return;}
   let len=0;chunks.forEach(c=>len+=c.length);const pcm=new Float32Array(len);let off=0;chunks.forEach(c=>{pcm.set(c,off);off+=c.length;});
-  const ds=downsamplePcm(pcm,sr,8000);   // 8 kHz reicht für Sprache und hält die Datei winzig
+  const ds=downsamplePcm(pcm,sr,16000);   // 16 kHz: gute Sprachqualität, Datei bleibt klein
   let blob=null,mime="audio/mpeg";
-  if(typeof lamejs!=="undefined"){try{blob=encodeMp3(ds,8000);}catch(_){blob=null;}}
-  if(!blob){blob=encodeWav(ds,8000);mime="audio/wav";}   // Fallback, falls MP3-Encoder fehlt
+  if(typeof lamejs!=="undefined"){try{blob=encodeMp3(ds,16000);}catch(_){blob=null;}}
+  if(!blob){blob=encodeWav(ds,16000);mime="audio/wav";}   // Fallback, falls MP3-Encoder fehlt
   if(blob.size>MAX_FILE){toast("Sprachnachricht zu lang.");return;}
   fileToDataURL(blob).then(data=>deliver("",{kind:"voice",mime,data,dur})).catch(()=>toast("Konnte Aufnahme nicht senden."));
 }
 /* Sprache als kleines MP3 (24 kbps mono) – spielt auf jedem Gerät, winzig genug für den Versand */
 function encodeMp3(samples,sr){
-  const enc=new lamejs.Mp3Encoder(1,sr,24);const n=samples.length,pcm=new Int16Array(n);
+  const enc=new lamejs.Mp3Encoder(1,sr,48);const n=samples.length,pcm=new Int16Array(n);
   for(let i=0;i<n;i++){const s=Math.max(-1,Math.min(1,samples[i]));pcm[i]=s<0?s*0x8000:s*0x7FFF;}
   const out=[];for(let i=0;i<n;i+=1152){const mp3=enc.encodeBuffer(pcm.subarray(i,i+1152));if(mp3&&mp3.length)out.push(new Int8Array(mp3));}
   const end=enc.flush();if(end&&end.length)out.push(new Int8Array(end));
