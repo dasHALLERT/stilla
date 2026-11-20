@@ -1035,32 +1035,54 @@ function fileToDataURL(file){return new Promise((res,rej)=>{const r=new FileRead
 function fmtDur(sec){sec=Math.max(0,Math.round(sec));const m=Math.floor(sec/60),s=sec%60;return m+":"+(s<10?"0":"")+s;}
 const PLAY_SVG='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
 const PAUSE_SVG='<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
-/* ---- Sprachnachrichten (Aufnahme über Mikrofon, verschlüsselt gesendet) ---- */
-let mediaRec=null,recChunks=[],recStream=null,recStart=0,recTimer=null,recMime="";
+/* ---- Sprachnachrichten: Aufnahme als WAV (spielt auf JEDEM Gerät, auch Huawei-WebView) ---- */
+let recStream=null,recStart=0,recTimer=null,recCtx=null,recNode=null,recSrc=null,recBuf=[],recSR=44100;
 async function startVoice(){
   if(!peer)return;
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||typeof MediaRecorder==="undefined"){toast("Mikrofon hier nicht verfügbar.");return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast("Mikrofon hier nicht verfügbar.");return;}
   let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){toast("Kein Mikrofon-Zugriff – bitte erlauben.");return;}
   recStream=stream;
-  recMime=(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported("audio/webm;codecs=opus"))?"audio/webm;codecs=opus":((MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported("audio/mp4"))?"audio/mp4":"");
-  try{mediaRec=recMime?new MediaRecorder(stream,{mimeType:recMime}):new MediaRecorder(stream);}catch(_){try{mediaRec=new MediaRecorder(stream);}catch(e2){toast("Aufnahme nicht möglich.");stopTracks();return;}}
-  recChunks=[];mediaRec.ondataavailable=e=>{if(e.data&&e.data.size)recChunks.push(e.data);};
-  try{mediaRec.start();}catch(_){toast("Aufnahme nicht möglich.");stopTracks();return;}
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    recCtx=new AC();recSR=recCtx.sampleRate||44100;recBuf=[];
+    recSrc=recCtx.createMediaStreamSource(stream);
+    recNode=recCtx.createScriptProcessor(4096,1,1);
+    recNode.onaudioprocess=e=>{recBuf.push(new Float32Array(e.inputBuffer.getChannelData(0)));};
+    recSrc.connect(recNode);recNode.connect(recCtx.destination);
+  }catch(e){toast("Aufnahme nicht möglich.");stopTracks();return;}
   recStart=Date.now();$("#inbar").classList.add("recording");$("#recTime").textContent="0:00";
   recTimer=setInterval(()=>{$("#recTime").textContent=fmtDur((Date.now()-recStart)/1000);},200);
 }
-function stopTracks(){if(recTimer){clearInterval(recTimer);recTimer=null;}if(recStream){try{recStream.getTracks().forEach(t=>t.stop());}catch(_){}}recStream=null;$("#inbar").classList.remove("recording");}
-function cancelVoice(){if(mediaRec&&mediaRec.state!=="inactive"){mediaRec.onstop=null;try{mediaRec.stop();}catch(_){}}mediaRec=null;stopTracks();}
+function stopTracks(){
+  if(recTimer){clearInterval(recTimer);recTimer=null;}
+  try{if(recNode){recNode.onaudioprocess=null;recNode.disconnect();}}catch(_){}
+  try{if(recSrc)recSrc.disconnect();}catch(_){}
+  try{if(recCtx&&recCtx.state!=="closed")recCtx.close();}catch(_){}
+  recNode=recSrc=recCtx=null;
+  if(recStream){try{recStream.getTracks().forEach(t=>t.stop());}catch(_){}}recStream=null;
+  $("#inbar").classList.remove("recording");
+}
+function cancelVoice(){recBuf=[];stopTracks();}
 function sendVoice(){
-  if(!mediaRec){stopTracks();return;}
-  const dur=Math.round((Date.now()-recStart)/1000);const mr=mediaRec;mediaRec=null;
-  mr.onstop=async()=>{ stopTracks();
-    if(!recChunks.length||dur<1){toast("Zu kurz.");return;}
-    const blob=new Blob(recChunks,{type:recMime||"audio/webm"});
-    if(blob.size>MAX_FILE){toast("Sprachnachricht zu lang (max "+fmtSize(MAX_FILE)+" im Test).");return;}
-    try{const data=await fileToDataURL(blob);deliver("",{kind:"voice",mime:blob.type,data,dur});}catch(_){toast("Konnte Aufnahme nicht senden.");}
-  };
-  try{mr.stop();}catch(_){stopTracks();}
+  const dur=Math.round((Date.now()-recStart)/1000);const chunks=recBuf,sr=recSR;recBuf=[];
+  stopTracks();
+  if(!chunks.length||dur<1){toast("Zu kurz.");return;}
+  let len=0;chunks.forEach(c=>len+=c.length);const pcm=new Float32Array(len);let off=0;chunks.forEach(c=>{pcm.set(c,off);off+=c.length;});
+  const wav=encodeWav(downsamplePcm(pcm,sr,16000),16000);
+  if(wav.size>MAX_FILE){toast("Sprachnachricht zu lang (max "+fmtSize(MAX_FILE)+" im Test).");return;}
+  fileToDataURL(wav).then(data=>deliver("",{kind:"voice",mime:"audio/wav",data,dur})).catch(()=>toast("Konnte Aufnahme nicht senden."));
+}
+function downsamplePcm(buf,from,to){
+  if(to>=from)return buf;const ratio=from/to,n=Math.floor(buf.length/ratio),out=new Float32Array(n);let i=0,j=0;
+  while(i<n){const next=Math.round((i+1)*ratio);let s=0,c=0;for(;j<next&&j<buf.length;j++){s+=buf[j];c++;}out[i]=c?s/c:0;i++;}
+  return out;
+}
+function encodeWav(samples,sr){
+  const n=samples.length,ab=new ArrayBuffer(44+n*2),v=new DataView(ab);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,"RIFF");v.setUint32(4,36+n*2,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,"data");v.setUint32(40,n*2,true);
+  let o=44;for(let i=0;i<n;i++){const s=Math.max(-1,Math.min(1,samples[i]));v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true);o+=2;}
+  return new Blob([ab],{type:"audio/wav"});
 }
 function updateSendMic(){const has=($("#msg").value||"").trim().length>0;$("#sendBtn").style.display=has?"":"none";$("#micBtn").style.display=has?"none":"";}
 function fmtSize(b){if(b<1024)return b+" B";if(b<1048576)return(b/1024).toFixed(0)+" KB";return(b/1048576).toFixed(1)+" MB";}
