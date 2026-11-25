@@ -399,6 +399,12 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
   .in{align-self:flex-start;background:var(--s2);border-bottom-left-radius:5px}
   .out{align-self:flex-end;background:var(--accent);color:var(--on);border-bottom-right-radius:5px}
   .inbar{flex:none;display:flex;gap:8px;padding:10px 0 max(16px,calc(10px + env(safe-area-inset-bottom,0px)));align-items:center}
+  .bub .sender{font-size:.72rem;font-weight:700;margin-bottom:2px;line-height:1.1}
+  .av.groupav{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 80%,#000),color-mix(in srgb,var(--accent) 35%,#000));color:#eafffb}
+  .grpmrow{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+  .grpmrow input{width:18px;height:18px;accent-color:var(--accent)}
+  .grpmrow .gm-nm{font-size:.95rem}
+  #grpMembers{max-height:38vh;overflow-y:auto;margin:6px 0 2px}
   .bub .meta{font-size:.6rem;margin-top:3px;text-align:right;opacity:.85}
   .bub.out .meta{color:var(--on)}
   .bub .tick.read{color:#1f4fd6;font-weight:700}
@@ -1051,6 +1057,21 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
       <input id="peerNum" inputmode="numeric" placeholder="9-stellige Nummer">
       <textarea id="reqText" placeholder="Kurzer Gruß an die Person (optional) – z. B. wer du bist" maxlength="200"></textarea>
       <button id="addBtn">Als Freund hinzufügen</button>
+      <div style="border-top:1px solid var(--line);margin:14px 0 0"></div>
+      <button class="ghost" id="newGroupBtn" style="margin-top:14px">👥 Neue Gruppe erstellen</button>
+    </div>
+  </div>
+
+  <!-- SHEET: Neue Gruppe -->
+  <div class="sheet" id="newGroupSheet">
+    <button class="x" data-close>✕</button>
+    <div class="inner">
+      <h3>Neue Gruppe</h3>
+      <p class="sub" style="margin:0 0 4px">Verschlüsselt wie deine Einzelchats – jede Nachricht geht Ende-zu-Ende an jedes Mitglied.</p>
+      <input id="grpName" placeholder="Gruppenname" maxlength="40">
+      <p class="sub" style="margin:10px 0 2px">Mitglieder auswählen:</p>
+      <div id="grpMembers"></div>
+      <button id="grpCreateBtn">Gruppe erstellen</button>
     </div>
   </div>
 
@@ -1330,8 +1351,18 @@ function encrypt(theirKexPubB64,text){const n=nacl.randomBytes(24);const box=nac
 function decrypt(theirKexPubB64,env){const m=nacl.box.open(unb64(env.c),unb64(env.n),unb64(theirKexPubB64),unb64(me.kexSec));return m?dec.decode(m):null;}
 
 /* ---------- Nachrichten-Format (Text + optionaler Anhang) ---------- */
-function packMsg(text,att,exp){return JSON.stringify({v:1,t:text||"",a:att||null,x:exp?1:0});}
-function unpackMsg(raw){try{const o=JSON.parse(raw);if(o&&o.v===1)return{text:o.t||"",att:o.a||null,exp:!!o.x};}catch{}return{text:raw,att:null,exp:false};}
+function packMsg(text,att,exp,g){const o={v:1,t:text||"",a:att||null,x:exp?1:0};if(g)o.g=g;return JSON.stringify(o);}
+function unpackMsg(raw){try{const o=JSON.parse(raw);if(o&&o.v===1)return{text:o.t||"",att:o.a||null,exp:!!o.x,g:o.g||""};}catch{}return{text:raw,att:null,exp:false,g:""};}
+/* ---- Gruppen (vorläufig): E2E per Fan-out, jede Nachricht einzeln pro Mitglied verschlüsselt ---- */
+function groups(){return LS.get("stilla_groups",{});}
+function saveGroups(g){LS.set("stilla_groups",g);}
+function isGroup(id){return typeof id==="string"&&id.indexOf("grp_")===0;}
+function newGid(){return "grp_"+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);}
+function groupOf(gid){return groups()[gid]||null;}
+function groupMembers(gid){const g=groupOf(gid);return g?(g.members||{}):{};}      // {number:{name,kexPub}}
+function memberName(gid,num){if(num===me.number)return "Du";const m=groupMembers(gid)[num];return (m&&m.name)||(contacts()[num]&&contacts()[num].name)||("Nummer "+fmt(num));}
+const SENDER_COLORS=["#58d5c9","#6aa6ff","#b89cff","#7bd389","#ff8fb0","#ffcf5c","#ff8a7a","#5ad1e6"];
+function senderColor(num){let h=0;for(let i=0;i<(num||"").length;i++)h=(h*31+num.charCodeAt(i))>>>0;return SENDER_COLORS[h%SENDER_COLORS.length];}
 
 /* Bild verkleinern -> data-URL (JPEG), damit die Umschläge klein bleiben */
 /* Bild dekodieren – erst createImageBitmap (verträgt mehr Handy-Formate/WebViews),
@@ -1519,30 +1550,34 @@ function nudgeReceived(name){
 
 function renderContacts(){
   renderRequests();renderPresenceBar();
-  const box=$("#contactList");const c=contacts();const u=unread();const nums=Object.keys(c);
-  if(!nums.length){box.innerHTML='<div class="empty">Noch keine Chats.<br>Tipp auf <b>+</b>, gib deine Nummer weiter oder füge jemanden als Freund hinzu.</div>';return;}
-  // angepinnte zuerst, dann nach letzter Nachricht
+  const box=$("#contactList");const c=contacts();const u=unread();const gr=groups();
+  const nums=Object.keys(c);const gids=Object.keys(gr);
+  if(!nums.length&&!gids.length){box.innerHTML='<div class="empty">Noch keine Chats.<br>Tipp auf <b>+</b>, gib deine Nummer weiter oder füge jemanden als Freund hinzu.</div>';return;}
   const P=pins();
-  nums.sort((a,b)=>{const pa=P.includes(a)?1:0,pb=P.includes(b)?1:0;if(pa!==pb)return pb-pa;const la=logOf(a),lb=logOf(b);return ((lb[lb.length-1]||{}).ts||0)-((la[la.length-1]||{}).ts||0);});
+  const ids=nums.concat(gids);
+  // angepinnte zuerst, dann nach letzter Nachricht
+  ids.sort((a,b)=>{const pa=P.includes(a)?1:0,pb=P.includes(b)?1:0;if(pa!==pb)return pb-pa;const la=logOf(a),lb=logOf(b);return ((lb[lb.length-1]||{}).ts||0)-((la[la.length-1]||{}).ts||0);});
   box.innerHTML="";
-  nums.forEach(n=>{const p=c[n]||{};const lg=logOf(n);const last=lg[lg.length-1];const uc=u[n]||0;const isPin=P.includes(n);
+  ids.forEach(n=>{const grp=isGroup(n);const p=grp?(gr[n]||{}):(c[n]||{});const lg=logOf(n);const last=lg[lg.length-1];const uc=u[n]||0;const isPin=P.includes(n);
     let preview;
-    if(last){const body=last.del?"🚫 Nachricht gelöscht":(last.att?(last.att.kind==="img"?"📷 Bild":last.att.kind==="video"?"🎞️ Video":last.att.kind==="file"?"📎 Datei":last.text):last.text);preview=(isMine(last)?"Du: ":"")+body;}
-    else preview=p.status||fmt(n);
+    if(last){let body=last.del?"🚫 Nachricht gelöscht":last.sys?last.text:(last.att?(last.att.kind==="img"?"📷 Bild":last.att.kind==="video"?"🎞️ Video":last.att.kind==="voice"?"🎤 Sprachnachricht":last.att.kind==="file"?"📎 Datei":last.text):last.text);
+      let pre=last.sys?"":(isMine(last)?"Du: ":(grp&&last.from?esc(memberName(n,last.from))+": ":""));preview=pre+body;}
+    else preview=grp?((Object.keys(p.members||{}).length)+" Mitglieder"):(p.status||fmt(n));
     const r=document.createElement("div");r.className="row";
     const aw=document.createElement("div");aw.className="avwrap";aw.style.cursor="pointer";
-    const av=document.createElement("div");av.className="av";setAv(av,p);aw.appendChild(av);
-    if(online.has(n)){const dot=document.createElement("span");dot.className="onlinedot";aw.appendChild(dot);}
-    aw.onclick=e=>{e.stopPropagation();if(clickGuarded())return;openProfile(n);};
+    const av=document.createElement("div");av.className="av";if(grp){av.classList.add("groupav");av.innerHTML=GROUP_SVG;}else setAv(av,p);aw.appendChild(av);
+    if(!grp&&online.has(n)){const dot=document.createElement("span");dot.className="onlinedot";aw.appendChild(dot);}
+    aw.onclick=e=>{e.stopPropagation();if(clickGuarded())return;if(grp)openChat(n);else openProfile(n);};
     const mid=document.createElement("div");mid.className="mid";
-    mid.innerHTML=`<div class="nm">${esc(p.name||("Nummer "+fmt(n)))}${isPin?' <span class="pin">📌</span>':''}</div><div class="pv">${esc(preview)}</div>`;
+    mid.innerHTML=`<div class="nm">${esc(grp?(p.name||"Gruppe"):(p.name||("Nummer "+fmt(n))))}${isPin?' <span class="pin">📌</span>':''}</div><div class="pv">${esc(preview)}</div>`;
     r.appendChild(aw);r.appendChild(mid);
     if(uc){const b=document.createElement("span");b.className="un";b.textContent=uc>99?"99+":uc;r.appendChild(b);}
     r.onclick=()=>{if(clickGuarded())return;openChat(n);};
-    attachLongPress(r,()=>openChatMenu(n));
+    attachLongPress(r,()=>grp?openGroupMenu(n):openChatMenu(n));
     box.appendChild(r);
   });
 }
+const GROUP_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0111 0"/><path d="M16 5.2a3 3 0 010 5.6M17.5 19a5.5 5.5 0 00-3-4.9"/></svg>';
 
 function renderThread(n){
   const box=$("#thread");box.innerHTML="";
@@ -1556,6 +1591,8 @@ function renderThread(n){
       d.className="bub "+(mine?"out":"in")+" tomb";d.textContent="Nachricht wurde bei euch beiden gelöscht.";
       attachLongPress(d,()=>openMsgMenu(n,m));box.appendChild(d);return;
     }
+    let senderEl=null;
+    if(isGroup(n)&&!mine&&m.from){senderEl=document.createElement("div");senderEl.className="sender";senderEl.textContent=memberName(n,m.from);senderEl.style.color=senderColor(m.from);d.appendChild(senderEl);}
     if(a&&a.kind==="img"){
       const img=document.createElement("img");img.className="bubimg";img.src=a.data;img.alt=a.name||"Bild";
       img.onclick=()=>{if(clickGuarded())return;openLightbox("img",a.data);};
@@ -1582,7 +1619,7 @@ function renderThread(n){
       au.onended=()=>{pb.innerHTML=PLAY_SVG;fill.style.width="0%";td.textContent=fmtDur(a.dur||0);};
       vm.appendChild(pb);vm.appendChild(bar);vm.appendChild(td);d.appendChild(vm);
     }else{
-      d.textContent=m.text;
+      if(senderEl)d.appendChild(document.createTextNode(m.text||""));else d.textContent=m.text;
     }
     if(mine){let st=m.st||1;if(!receiptsOn()&&st>2)st=2;/* Lesebestätigung aus -> kein blauer Haken (gegenseitig) */const meta=document.createElement("div");meta.className="meta";meta.innerHTML='<span class="tick'+(st>=3?' read':'')+'">'+(st>=2?'✓✓':'✓')+'</span>';d.appendChild(meta);}
     attachLongPress(d,()=>openMsgMenu(n,m));
@@ -1592,9 +1629,11 @@ function renderThread(n){
 }
 
 async function openChat(num){
+  if(isGroup(num))return openGroup(num);
   const p=await resolvePeer(num)||{name:"Nummer "+fmt(num)};
   if(!p.kexPub){toast("Diese Nummer ist (noch) nicht erreichbar.");return;}
   peer={number:num,...p};
+  $("#cvav").classList.remove("groupav");$("#nudgeBtn").style.display="";
   $("#peerName").textContent=p.name||("Nummer "+fmt(num));$("#peerNumLbl").textContent=p.status?p.status:fmt(num);setAv($("#cvav"),p);
   const u=unread();delete u[num];saveUnread(u);
   // eingehende Nachrichten als gelesen markieren + Lesebestätigung senden
@@ -1603,6 +1642,77 @@ async function openChat(num){
   if(ch)saveLog(num,lg);
   if(maxIn&&receiptsOn())sendAck(num,"read",maxIn);
   closeEmoji();renderThread(num);show("chat");
+}
+
+async function openGroup(gid){
+  const g=groupOf(gid);if(!g){toast("Gruppe nicht gefunden.");return;}
+  const cnt=Object.keys(g.members||{}).length;
+  peer={number:gid,group:true,name:g.name,members:g.members};
+  $("#peerName").textContent=g.name||"Gruppe";
+  $("#peerNumLbl").textContent=cnt+" Mitglieder";
+  const av=$("#cvav");av.classList.add("groupav");av.innerHTML=GROUP_SVG;av.style.background="";
+  $("#nudgeBtn").style.display="none";                 // Anstupsen gibt's nur 1:1
+  const u=unread();delete u[gid];saveUnread(u);
+  const lg=logOf(gid);lg.forEach(m=>{if(!isMine(m)&&!m.readAt)m.readAt=Date.now();});saveLog(gid,lg);
+  closeEmoji();renderThread(gid);show("chat");
+}
+
+/* ---- Gruppe erstellen ---- */
+function openNewGroup(){
+  closeSheets();
+  const c=contacts();const nums=Object.keys(c);
+  const list=$("#grpMembers");list.innerHTML="";
+  if(!nums.length){list.innerHTML='<p class="sub" style="margin:0">Du hast noch keine Freunde zum Hinzufügen. Füge zuerst jemanden hinzu.</p>';}
+  nums.forEach(n=>{const p=c[n]||{};
+    const row=document.createElement("label");row.className="grpmrow";
+    row.innerHTML=`<input type="checkbox" value="${n}"><span class="gm-nm">${esc(p.name||("Nummer "+fmt(n)))}</span>`;
+    list.appendChild(row);
+  });
+  $("#grpName").value="";
+  $("#newGroupSheet").classList.add("on");
+}
+async function createGroup(){
+  const name=($("#grpName").value||"").trim().slice(0,40);
+  if(!name){toast("Bitte einen Gruppennamen eingeben.");return;}
+  const picked=[...document.querySelectorAll("#grpMembers input:checked")].map(x=>x.value);
+  if(picked.length<1){toast("Wähle mindestens eine Person aus.");return;}
+  const c=contacts();
+  const members={};members[me.number]={name:me.name||"",kexPub:me.kexPub};
+  picked.forEach(n=>{const p=c[n]||{};members[n]={name:p.name||"",kexPub:p.kexPub||""};});
+  // fehlende Keys nachladen
+  for(const n of picked){if(!members[n].kexPub){const k=await lookupKeys(n);if(k&&k.kexPub)members[n].kexPub=k.kexPub;}}
+  const gid=newGid();
+  const g={id:gid,name,members,admin:me.number,ts:Date.now()};
+  const gs=groups();gs[gid]=g;saveGroups(gs);
+  pushSys(gid,"Du hast die Gruppe „"+name+"“ erstellt.");
+  // Einladung (mit allen Mitglieds-Keys) an jedes Mitglied schicken
+  const invite={kind:"grpinvite",g:gid,name,by:me.name||"",members};
+  for(const n of picked){const p=members[n];if(p&&p.kexPub){sendCtrl(n,p.kexPub,invite);}}
+  $("#newGroupSheet").classList.remove("on");
+  renderContacts();openGroup(gid);
+  toast("Gruppe erstellt ✓");
+}
+function openGroupMenu(gid){
+  const g=groupOf(gid);if(!g)return;
+  openMenu(g.name||"Gruppe",[
+    {label:"Mitglieder anzeigen",fn:()=>showGroupMembers(gid)},
+    {label:(pins().includes(gid)?"Loslösen":"Anpinnen"),fn:()=>togglePin(gid)},
+    {label:"Chat leeren",fn:()=>clearChat(gid)},
+    {label:"Gruppe verlassen",danger:true,fn:()=>leaveGroup(gid)}
+  ]);
+}
+function showGroupMembers(gid){
+  const g=groupOf(gid);if(!g)return;
+  const names=Object.keys(g.members||{}).map(n=>memberName(gid,n)==="Du"?"Du":memberName(gid,n));
+  openMenu((g.name||"Gruppe")+" · "+names.length+" Mitglieder",
+    names.map(nm=>({label:nm,fn:()=>{}})));
+}
+function leaveGroup(gid){
+  const gs=groups();delete gs[gid];saveGroups(gs);
+  try{localStorage.removeItem("stilla_log_"+gid);}catch{}
+  const u=unread();delete u[gid];saveUnread(u);savePins(pins().filter(x=>x!==gid));
+  if(peer&&peer.number===gid){peer=null;go("home");}
+  renderContacts();toast("Gruppe verlassen");
 }
 
 async function addByNumber(){
@@ -1662,6 +1772,15 @@ function closeSheets(){document.querySelectorAll(".sheet").forEach(s=>s.classLis
 async function deliver(text,att){
   if(!peer)return;
   const ts=Date.now();
+  if(peer.group){                        // ---- Gruppe: einzeln an jedes Mitglied verschlüsseln (Fan-out) ----
+    const gid=peer.number;const exp=chatAutodel(gid);
+    const lg=logOf(gid);lg.push({from:me.number,mine:true,text:text||"",att:att||null,ts,st:1,exp});saveLog(gid,lg);renderThread(gid);renderContacts();playSnd("sent");
+    const mem=groupMembers(gid);let okAll=true;
+    for(const n of Object.keys(mem)){ if(n===me.number)continue; const kp=mem[n].kexPub; if(!kp){okAll=false;continue;}
+      try{const env=encrypt(kp,packMsg(text,att,exp,gid));const r=await api("/send","POST",{to:n,from:me.number,envelope:env,ts});if(!r||r.error||!(r.queued||r.ok))okAll=false;}catch{okAll=false;} }
+    if(!okAll)toast(att?"Nicht an alle zugestellt – Datei evtl. zu groß.":"Nicht an alle zugestellt.");
+    return;
+  }
   const exp=chatAutodel(peer.number);   // 24h-Löschen für DIESEN Chat (Override oder global) -> läuft bei BEIDEN ab
   const lg=logOf(peer.number);lg.push({from:me.number,mine:true,text:text||"",att:att||null,ts,st:1,exp});saveLog(peer.number,lg);renderThread(peer.number);renderContacts();playSnd("sent");
   try{const env=encrypt(peer.kexPub,packMsg(text,att,exp));const r=await api("/send","POST",{to:peer.number,from:me.number,envelope:env,ts});
@@ -1839,7 +1958,7 @@ async function fetchLoop(){
     let env=m.envelope; if(typeof env==="string"){try{env=JSON.parse(env);}catch{}}
     const raw=(p&&p.kexPub)?decrypt(p.kexPub,env):null;
     if(raw==null) continue;
-    const {text,att,exp}=unpackMsg(raw);
+    const {text,att,exp,g}=unpackMsg(raw);
 
     // ---- Freundschaftsanfragen ----
     if(att&&att.kind==="friendreq"){ if(!contacts()[from]){const ri=reqin();ri[from]={name:att.name||"",kexPub:att.kexPub||p.kexPub||"",avatar:att.avatar||"",status:att.status||"",text:att.text||"",ts:att.ts||m.ts||Date.now()};saveReqin(ri);reqTouched=true;playSnd("friend");} continue; }
@@ -1852,6 +1971,12 @@ async function fetchLoop(){
       nudgeReceived(att.name|| (contacts()[from]&&contacts()[from].name) || ("Nummer "+fmt(from)));
       if(peer&&peer.number===from)openPeerTouched=true;else u[from]=(u[from]||0)+1; continue; }
     if(att&&att.kind==="storylike"){ if(contacts()[from]){const lg2=logOf(from);lg2.push({from,mine:false,text:"❤️ hat auf deine ST0RY reagiert",att:null,ts:att.ts||m.ts||Date.now()});saveLog(from,lg2);changed=true;if(peer&&peer.number===from)openPeerTouched=true;else u[from]=(u[from]||0)+1;} continue; }
+    if(att&&att.kind==="grpinvite"){ if(!contacts()[from]){continue;} const gid=att.g; if(!gid){continue;}
+      const gs=groups();const existed=!!gs[gid];const mem=att.members||{};
+      mem[me.number]=mem[me.number]||{name:(me.name||""),kexPub:me.kexPub};
+      gs[gid]={id:gid,name:att.name||(gs[gid]&&gs[gid].name)||"Gruppe",members:mem,admin:(gs[gid]&&gs[gid].admin)||from,ts:(gs[gid]&&gs[gid].ts)||Date.now()};saveGroups(gs);
+      if(!existed){ const who=att.by||(contacts()[from]&&contacts()[from].name)||("Nummer "+fmt(from)); pushSys(gid,who+" hat dich zur Gruppe „"+gs[gid].name+"“ hinzugefügt."); playSnd("connected"); u[gid]=(u[gid]||0)+1; changed=true; }
+      continue; }
 
     if(att&&att.kind==="ack"){ const lg2=logOf(from);let ch=false;
       lg2.forEach(x=>{if(isMine(x)&&x.ts<=att.ref){if(att.t==="delivered"&&(x.st||1)<2){x.st=2;ch=true;}if(att.t==="read"&&(x.st||1)<3){x.st=3;x.readAt=Date.now();ch=true;}}});
@@ -1866,6 +1991,14 @@ async function fetchLoop(){
       continue;
     }
 
+    if(g){   // ---- Gruppennachricht: ins Gruppen-Log einsortieren ----
+      const gg=groups()[g]; if(!gg||!gg.members||!gg.members[from]) continue;   // nur bekannte Gruppen & Mitglieder
+      const glg=logOf(g); if(glg.some(x=>x.ts===m.ts&&x.from===from)) continue;
+      const isOpenG=peer&&peer.number===g;
+      glg.push({from,mine:false,text,att,ts:m.ts||Date.now(),readAt:isOpenG?Date.now():0,exp});saveLog(g,glg);changed=true;playSnd("msgin");
+      if(isOpenG)openPeerTouched=true;else u[g]=(u[g]||0)+1;
+      continue;
+    }
     if(!contacts()[from]) continue;   // nur Freunde dürfen schreiben
     const lg=logOf(from);
     if(lg.some(x=>x.ts===m.ts&&x.from===from)) continue; // Dublette
@@ -2713,6 +2846,8 @@ $("#delConfirm").onclick=async()=>{
 };
 $("#fab").onclick=()=>{$("#sheetNum").textContent=fmt(me.number);$("#addsheet").classList.add("on");};
 $("#addBtn").onclick=addByNumber;
+$("#newGroupBtn").onclick=openNewGroup;
+$("#grpCreateBtn").onclick=createGroup;
 $("#peerNum").addEventListener("keydown",e=>{if(e.key==="Enter")addByNumber();});
 $("#backBtn").onclick=()=>{peer=null;go("home");};
 $("#nudgeBtn").onclick=()=>{if(peer)sendNudge(peer.number);};
